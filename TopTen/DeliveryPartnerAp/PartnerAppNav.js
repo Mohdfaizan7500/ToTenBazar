@@ -11,6 +11,8 @@ import AssignOrders from '../DeliveryPartnerAp/AssignOrders';
 import DeliverdOreder from '../DeliveryPartnerAp/DeliverdOreder';
 import StartDelivered from '../DeliveryPartnerAp/StartDelivered';
 import Payments from '../DeliveryPartnerAp/Payments';
+import CompleteDelivery from '../DeliveryPartnerAp/CompleteDelivery';
+import Notification from '../DeliveryPartnerAp/Notification';
 const Stack = createStackNavigator()
 
 const PartnerAppNav = () => {
@@ -63,6 +65,14 @@ const PartnerAppNav = () => {
             />
              <Stack.Screen name='Payments' component={Payments}
                 options={({ navigation }) => getProfileHeaderOptions('Payments', navigation)}
+
+            />
+             <Stack.Screen name='CompleteDelivery' component={CompleteDelivery}
+              options={{ headerShown: false }}
+
+            />
+             <Stack.Screen name='Notification' component={Notification}
+                options={({ navigation }) => getProfileHeaderOptions('Notification', navigation)}
 
             />
         </Stack.Navigator>
