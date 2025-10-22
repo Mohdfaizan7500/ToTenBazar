@@ -3,6 +3,8 @@ import React from 'react'
 import BRAND from '../../src/constant/color'
 import { s, vs, ms, mvs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
+import { useDispatch } from 'react-redux'
+import { setToken } from '../../store/slices/authSlice'
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
 
@@ -17,6 +19,8 @@ const scaleFactor = getResponsiveScale();
 
 const OnBoardingScreen = () => {
     const navigation = useNavigation();
+
+    const dispatch = useDispatch();
     return (
         <View style={styles.container}>
             {/* Image Section */}
@@ -68,7 +72,9 @@ const OnBoardingScreen = () => {
                 </View>
 
                 {/* Get Started Button */}
-                <TouchableOpacity style={styles.button} onPress={()=>navigation.navigate('Login')}>
+                <TouchableOpacity style={styles.button} onPress={async()=>{
+                    // await dispatch(setToken("amaan"))
+                    navigation.navigate('Login')}}>
                     <Text style={styles.buttonText}>Get Started</Text>
                 </TouchableOpacity>
             </View>

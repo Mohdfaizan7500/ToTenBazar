@@ -6,6 +6,10 @@ import BRAND from '../../../src/constant/color'
 import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import ImagePicker from "react-native-image-crop-picker";
+import { useDispatch } from 'react-redux'
+import { clearToken, setToken } from '../../../store/slices/authSlice'
+import { setProfilepic } from '../../../store/slices/userSlice'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const Profile = () => {
     const iconWidth = s(16)
@@ -19,6 +23,7 @@ const Profile = () => {
     const navigateHandle = (screenName) => {
         navigation.navigate(screenName);
     }
+    const dispatch = useDispatch();
 
     const SignOuthandle = () => {
         Alert.alert(
@@ -34,6 +39,8 @@ const Profile = () => {
                     style: 'destructive',
                     onPress: () => {
                         console.log('User signed out');
+                        AsyncStorage.clear()
+                        dispatch(clearToken())
                         // Add your sign out logic here
                     },
                 },
@@ -86,7 +93,7 @@ const Profile = () => {
             includeBase64: true
         }).then(async (image) => {
             setprofilepic(image?.path)
-            
+
         }).catch(error => {
             console.log('Gallery error:', error);
             if (error.code !== 'E_PICKER_CANCELLED') {
@@ -95,10 +102,11 @@ const Profile = () => {
         });
     }
 
-   
+
     const handleCancel = () => {
         setModalVisible(false)
     }
+
 
     return (
         <SafeAreaView style={styles.container}>

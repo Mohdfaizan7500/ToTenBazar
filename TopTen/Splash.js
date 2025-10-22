@@ -17,7 +17,7 @@ const Splash = () => {
 
         // Navigate after 3 seconds
         const timer = setTimeout(() => {
-            navigation.replace('OnBoardingScreen')
+            navigation.replace('AuthFlow')
         }, 3000)
 
         return () => clearTimeout(timer)

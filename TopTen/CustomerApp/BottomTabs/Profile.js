@@ -4,13 +4,23 @@ import { CameraIcon, HeplIcon, MyOrderIcon, ProfileIcon, ProfileIcon2, RightArro
 import { s, vs, ms } from 'react-native-size-matters'
 import BRAND from '../../../src/constant/color'
 import { useNavigation } from '@react-navigation/native'
+import { useDispatch, useSelector } from 'react-redux'
+import { clearToken, setToken } from '../../../store/slices/authSlice'
+import ImagePicker from "react-native-image-crop-picker";
+import { setProfilepic } from '../../../store/slices/userSlice'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const Profile = () => {
   const iconWidth = s(16)
   const iconHeight = s(16)
   const [modalVisible, setModalVisible] = useState(false)
+  const profile = useSelector(state => state?.user?.profilepic)
+  console.log("xyz:",profile)
+  const [profilepic, setprofilepic] = useState(profile)
+
 
   const navigation = useNavigation();
+  const dispatch = useDispatch();
 
   // Updated navigation function for nested navigator
   const navigateHandle = (screenName) => {
@@ -29,8 +39,13 @@ const Profile = () => {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             console.log('User signed out');
+            // await dispatch(setToken(null));
+            AsyncStorage.clear()
+            dispatch(clearToken())
+
+
             // Add your sign out logic here
           },
         },
@@ -46,17 +61,56 @@ const Profile = () => {
     setModalVisible(true)
   }
 
+
   const handleTakePhoto = () => {
     setModalVisible(false)
-    Alert.alert('Success', 'Take Photo option selected')
-    // Add your camera logic here
+    // Alert.alert('Successh', 'Take Photo option selected ')
+    ImagePicker.openCamera({
+      width: 300,
+      height: 300,
+      cropping: true,
+      compressImageQuality: 0.7,
+      freeStyleCropEnabled: true,
+      avoidEmptySpaceAroundImage: true,
+      cropperCircleOverlay: true,
+      includeBase64: true
+    }).then(async (image) => {
+      dispatch(setProfilepic(image?.path))
+      console.log("image:", image.path)
+      setprofilepic(image?.path)
+    }).catch(error => {
+      console.log('Camera error:', error);
+      if (error.code !== 'E_PICKER_CANCELLED') {
+        Alert.alert('Error', 'faild');
+      }
+    });
   }
 
   const handleChooseFromGallery = () => {
     setModalVisible(false)
-    Alert.alert('Success', 'Choose from Gallery option selected')
-    // Add your gallery picker logic here
+
+    ImagePicker.openPicker({
+      width: 300,
+      height: 300,
+      cropping: true,
+      compressImageQuality: 0.7,
+      freeStyleCropEnabled: true,
+      avoidEmptySpaceAroundImage: true,
+      cropperCircleOverlay: true,
+      includeBase64: true
+    }).then(async (image) => {
+      dispatch(setProfilepic(image?.path))
+      console.log("profile on profile",image?.path)
+      setprofilepic(image?.path)
+
+    }).catch(error => {
+      console.log('Gallery error:', error);
+      if (error.code !== 'E_PICKER_CANCELLED') {
+        Alert.alert('Error', 'Fails to choose photo from gaillry');
+      }
+    });
   }
+
 
   const handleCancel = () => {
     setModalVisible(false)
@@ -69,7 +123,7 @@ const Profile = () => {
       <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarContainer}>
         <View style={styles.avatar}>
           <Image
-            source={require('../../../src/images/UserImage.png')}
+            source={profilepic ? { uri: profilepic } : require('../../../src/images/UserImage.png')}
             style={styles.avatarImage}
             resizeMode='cover'
           />

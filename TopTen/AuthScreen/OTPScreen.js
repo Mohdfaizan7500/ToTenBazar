@@ -17,8 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ClockIcon } from '../../src/SVGicons/icon';
 import { s, vs, ms, mvs } from 'react-native-size-matters';
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import { setToken } from '../../store/slices/authSlice';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const OTPScreen = () => {
+  const dispatch = useDispatch();
   const [otp, setOtp] = useState(['', '', '', ''])
   const [isVerified, setIsVerified] = useState(false)
   const [timer, setTimer] = useState(30)
@@ -72,22 +76,21 @@ const OTPScreen = () => {
     }
   }
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const enteredOtp = otp.join('')
+    console.log('otp on otp screen:', enteredOtp)
 
-    if(enteredOtp === '1234'){
-      navigation.navigate('CustomerAppNav')
+    try {
+      // Save to AsyncStorage and dispatch to Redux
+      await AsyncStorage.setItem('token', enteredOtp)
+      dispatch(setToken(enteredOtp))
+
+      // Navigate based on OTP verification
+    } catch (error) {
+      console.error('Error saving token:', error)
+      Alert.alert('Error', 'Failed to verify OTP. Please try again.')
     }
-    else{
-      navigation.navigate('PartnerAppNav')
-    }
-    // if (enteredOtp.length === 4) {
-    //   setIsVerified(true)
-    //   // Handle verification logic here
-    //   console.log('OTP Verified:', enteredOtp)
-    // }
   }
-
   const handleResendOtp = () => {
     if (canResend) {
       setOtp(['', '', '', ''])

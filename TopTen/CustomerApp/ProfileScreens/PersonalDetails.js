@@ -1,26 +1,42 @@
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  StatusBar, 
-  Image, 
-  Modal, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StatusBar,
+  Image,
+  Modal,
   Alert,
   KeyboardAvoidingView,
-  Platform 
+  Platform
 } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import { s, vs } from 'react-native-size-matters'
 import BRAND from '../../../src/constant/color'
 import { CameraIcon } from '../../../src/SVGicons/icon'
+import ImagePicker from "react-native-image-crop-picker";
+import { useDispatch, useSelector } from 'react-redux'
+import { setProfilepic } from '../../../store/slices/userSlice'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const PersonalDetails = () => {
   const navigation = useNavigation()
   const [modalVisible, setModalVisible] = useState(false)
+  const profile = useSelector(state => state?.user?.profilepic)
+  const [profilepic, setprofilepic] = useState(profile)
+
+
+  console.log("profile:", profile)
+
+  const dispatch= useDispatch()
+
+  useEffect(() => {
+
+    setProfilepic(profile)
+  }, [])
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -30,7 +46,7 @@ const PersonalDetails = () => {
 
   const handleSave = () => {
     console.log('Saved data:', formData)
-    Alert.alert("Success",'Your profile has been Update')
+    Alert.alert("Success", 'Your profile has been Update')
     navigation.goBack()
   }
 
@@ -51,34 +67,73 @@ const PersonalDetails = () => {
   const handleCancel = () => {
     setModalVisible(false)
   }
+
   const handleTakePhoto = () => {
     setModalVisible(false)
-    Alert.alert('Success', 'Take Photo option selected')
-    // Add your camera logic here
+    // Alert.alert('Successh', 'Take Photo option selected ')
+    ImagePicker.openCamera({
+      width: 300,
+      height: 300,
+      cropping: true,
+      compressImageQuality: 0.7,
+      freeStyleCropEnabled: true,
+      avoidEmptySpaceAroundImage: true,
+      cropperCircleOverlay: true,
+      includeBase64: true
+    }).then(async (image) => {
+      console.log("image:", image.path)
+      dispatch(setProfilepic(image?.path))
+      AsyncStorage.setItem('userprofilepic',image?.path)
+      setprofilepic(image?.path)
+    }).catch(error => {
+      console.log('Camera error:', error);
+      if (error.code !== 'E_PICKER_CANCELLED') {
+        Alert.alert('Error', 'faild');
+      }
+    });
   }
 
   const handleChooseFromGallery = () => {
     setModalVisible(false)
-    Alert.alert('Success', 'Choose from Gallery option selected')
-    // Add your gallery picker logic here
+
+    ImagePicker.openPicker({
+      width: 300,
+      height: 300,
+      cropping: true,
+      compressImageQuality: 0.7,
+      freeStyleCropEnabled: true,
+      avoidEmptySpaceAroundImage: true,
+      cropperCircleOverlay: true,
+      includeBase64: true
+    }).then(async (image) => {
+      dispatch(setProfilepic(image?.path))
+      AsyncStorage.setItem('userprofilepic',image?.path)
+      setprofilepic(image?.path)
+
+    }).catch(error => {
+      console.log('Gallery error:', error);
+      if (error.code !== 'E_PICKER_CANCELLED') {
+        Alert.alert('Error', 'Fails to choose photo from gaillry');
+      }
+    });
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar backgroundColor={BRAND.white} barStyle="dark-content" />
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <Image
-              source={require('../../../src/images/UserImage.png')}
+              source={profilepic ? { uri: profilepic } : require('../../../src/images/UserImage.png')}
               style={styles.avatarImage}
               resizeMode='cover'
             />
@@ -120,7 +175,7 @@ const PersonalDetails = () => {
           />
         </View>
       </ScrollView>
-      
+
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Save</Text>
       </TouchableOpacity>
@@ -214,7 +269,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     width: "94%",
-    alignSelf:"center",
+    alignSelf: "center",
     backgroundColor: BRAND.primary,
     borderRadius: s(8),
     paddingVertical: vs(10),
