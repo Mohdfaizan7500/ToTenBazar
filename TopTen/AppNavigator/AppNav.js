@@ -25,7 +25,7 @@ const AppNav = () => {
 
 
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName='PartnerAppNav'>
+        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName='Splash'>
             <Stack.Screen name='Splash' component={Splash} />
             <Stack.Screen name='OnBoardingScreen' component={OnBoardingScreen} />
             <Stack.Screen name='Login' component={Login} />

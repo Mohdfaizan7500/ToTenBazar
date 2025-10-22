@@ -74,11 +74,18 @@ const OTPScreen = () => {
 
   const handleVerify = () => {
     const enteredOtp = otp.join('')
-    if (enteredOtp.length === 4) {
-      setIsVerified(true)
-      // Handle verification logic here
-      console.log('OTP Verified:', enteredOtp)
+
+    if(enteredOtp === '1234'){
+      navigation.navigate('CustomerAppNav')
     }
+    else{
+      navigation.navigate('PartnerAppNav')
+    }
+    // if (enteredOtp.length === 4) {
+    //   setIsVerified(true)
+    //   // Handle verification logic here
+    //   console.log('OTP Verified:', enteredOtp)
+    // }
   }
 
   const handleResendOtp = () => {

@@ -62,7 +62,7 @@ const DeliverdOreder = () => {
           <View key={item.id} style={styles.orderItem}>
             <View style={styles.itemContent}>
               <View style={styles.imageContainer}>
-                <Image 
+                <Image
                   source={item.image}
                   style={styles.itemImage}
                   resizeMode='contain'

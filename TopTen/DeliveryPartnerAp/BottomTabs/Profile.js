@@ -5,9 +5,11 @@ import { s, vs, ms } from 'react-native-size-matters'
 import BRAND from '../../../src/constant/color'
 import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import ImagePicker from "react-native-image-crop-picker";
 
 const Profile = () => {
     const iconWidth = s(16)
+    const [profilepic, setprofilepic] = useState('')
     const iconHeight = s(16)
     const [modalVisible, setModalVisible] = useState(false)
 
@@ -49,16 +51,51 @@ const Profile = () => {
 
     const handleTakePhoto = () => {
         setModalVisible(false)
-        Alert.alert('Success', 'Take Photo option selected')
-        // Add your camera logic here
+        // Alert.alert('Successh', 'Take Photo option selected ')
+        ImagePicker.openCamera({
+            width: 300,
+            height: 300,
+            cropping: true,
+            compressImageQuality: 0.7,
+            freeStyleCropEnabled: true,
+            avoidEmptySpaceAroundImage: true,
+            cropperCircleOverlay: true,
+            includeBase64: true
+        }).then(async (image) => {
+            console.log("image:", image.path)
+            setprofilepic(image?.path)
+        }).catch(error => {
+            console.log('Camera error:', error);
+            if (error.code !== 'E_PICKER_CANCELLED') {
+                Alert.alert('Error', 'faild');
+            }
+        });
     }
 
     const handleChooseFromGallery = () => {
         setModalVisible(false)
-        Alert.alert('Success', 'Choose from Gallery option selected')
-        // Add your gallery picker logic here
+
+        ImagePicker.openPicker({
+            width: 300,
+            height: 300,
+            cropping: true,
+            compressImageQuality: 0.7,
+            freeStyleCropEnabled: true,
+            avoidEmptySpaceAroundImage: true,
+            cropperCircleOverlay: true,
+            includeBase64: true
+        }).then(async (image) => {
+            setprofilepic(image?.path)
+            
+        }).catch(error => {
+            console.log('Gallery error:', error);
+            if (error.code !== 'E_PICKER_CANCELLED') {
+                Alert.alert('Error', 'Fails to choose photo from gaillry');
+            }
+        });
     }
 
+   
     const handleCancel = () => {
         setModalVisible(false)
     }
@@ -70,7 +107,7 @@ const Profile = () => {
             <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarContainer}>
                 <View style={styles.avatar}>
                     <Image
-                        source={require('../../../src/images/UserImage.png')}
+                        source={profilepic ? { uri: profilepic } : require('../../../src/images/UserImage.png')}
                         style={styles.avatarImage}
                         resizeMode='cover'
                     />

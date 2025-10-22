@@ -1,5 +1,5 @@
 import * as React from "react";
-import Svg, { Path, G, Defs, ClipPath, Rect, Pattern, Use, Image ,Circle} from "react-native-svg";
+import Svg, { Path, G, Defs, ClipPath, Rect, Pattern, Use, Image ,Circle,Ellipse} from "react-native-svg";
 
 export const ClockIcon = (props) => (
     <Svg
@@ -918,6 +918,26 @@ export const NotificationIcon = (props) => (
     </Svg>
 );
 
+export const NotificationCircle = (props) => (
+  <Svg
+    width={7}
+    height={8}
+    viewBox="0 0 7 8"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <Ellipse
+      cx={3.38051}
+      cy={3.59481}
+      rx={3.38051}
+      ry={3.59481}
+      fill="#EB2227"
+    {...props}
+
+    />
+  </Svg>
+);
 export const TotalDIcon = (props) => (
     <Svg
         width={29}

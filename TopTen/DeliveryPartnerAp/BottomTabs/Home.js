@@ -3,7 +3,7 @@ import React from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import BRAND from '../../../src/constant/color'
 import { s } from 'react-native-size-matters'
-import { NotificationIcon, PendinDIcon, RightArrowICon, SearchIcon, TotalDIcon } from '../../../src/SVGicons/icon'
+import { NotificationCircle, NotificationIcon, PendinDIcon, RightArrowICon, SearchIcon, TotalDIcon } from '../../../src/SVGicons/icon'
 import { useNavigation } from '@react-navigation/native'
 
 const Home = () => {
@@ -112,7 +112,12 @@ const Home = () => {
                             <Text style={styles.userName}>Kamlesh</Text>
                         </View>
                     </View>
-                    <NotificationIcon />
+                    <TouchableOpacity style={{marginRight:s(10)}} onPress={()=>navigation.navigate('Notification')}>
+                        <NotificationIcon />
+                        <View style={{position:"absolute",right:s(3),top:s(2)}}>
+                            <NotificationCircle />
+                        </View>
+                    </TouchableOpacity>
                 </View>
                 <View style={styles.searchContainer}>
                     <SearchIcon width={s(18)} height={s(18)} stroke={BRAND.muted} />
@@ -148,7 +153,7 @@ const Home = () => {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Assigned Orders</Text>
-                        <TouchableOpacity style={styles.seeAllButton} onPress={()=>navigation.navigate('AssignOrders')}>
+                        <TouchableOpacity style={styles.seeAllButton} onPress={() => navigation.navigate('AssignOrders')}>
                             <Text style={styles.seeAllText}>See All</Text>
                         </TouchableOpacity>
                     </View>
@@ -189,6 +194,7 @@ const styles = StyleSheet.create({
     userInfo: {
         flexDirection: "row",
         alignItems: "center",
+        paddingHorizontal:s(10),
         gap: s(12)
     },
     avatar: {
