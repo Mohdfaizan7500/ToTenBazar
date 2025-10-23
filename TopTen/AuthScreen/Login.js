@@ -18,21 +18,24 @@ import { useNavigation } from '@react-navigation/native'
 import BRAND from '../../src/constant/color';
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { s, vs, ms } from 'react-native-size-matters'
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { GetOtp } from '../../store/slices/authSlice';
 
 const Login = () => {
   const navigation = useNavigation()
-  const token = useSelector(state => state.auth.token)
+  const token = useSelector(state => state.auth?.token ?? '')
   const phoneInputRef = useRef(null)
 
-  console.log("token on login screen:", token)
+  // console.log("token on login screen:", token)
 
   const [formData, setFormData] = useState({
-    phoneNumber: ''
+    phoneNumber: '7078254220'
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
+
+  const dispatch = useDispatch();
 
   // Validation rules
   const validationRules = {
@@ -59,15 +62,15 @@ const Login = () => {
       return rules.message.required
     }
 
-    if (rules.minLength && value.length < rules.minLength) {
+    if (rules.minLength && (value?.length ?? 0) < rules.minLength) {
       return rules.message.minLength
     }
 
-    if (rules.maxLength && value.length > rules.maxLength) {
+    if (rules.maxLength && (value?.length ?? 0) > rules.maxLength) {
       return rules.message.maxLength
     }
 
-    if (rules.pattern && !rules.pattern.test(value)) {
+    if (rules.pattern && !rules.pattern.test(value ?? '')) {
       return rules.message.pattern
     }
 
@@ -151,10 +154,10 @@ const Login = () => {
 
 
     setIsSubmitting(true)
-    if (formData.phoneNumber === '7078254220') {
-      Alert.alert("Partner", "This number is for partner app.")
+    if (formData.phoneNumber === '7078254221') {
+      // Alert.alert("Partner", "This number is for partner app.")
       navigation.navigate('PartnerLogin')
-      setFormData('')
+      setFormData({ phoneNumber: '' })
       setIsSubmitting(false)
       return
     }
@@ -166,6 +169,7 @@ const Login = () => {
       console.log('Phone number submitted:', formData.phoneNumber)
 
       // Success - Navigate to OTP screen
+      // dispatch(GetOtp({ username: formData.phoneNumber }))
       navigation.navigate('OTPScreen', {
         phoneNumber: formData.phoneNumber,
         maskedPhone: `XXXXXX${formData.phoneNumber.slice(6)}`
@@ -202,8 +206,8 @@ const Login = () => {
   }
 
   // Check if form is valid
-  const isFormValid = formData.phoneNumber.length === 10 &&
-    /^[6-9]\d{9}$/.test(formData.phoneNumber)
+  const isFormValid = (formData?.phoneNumber?.length ?? 0) === 10 &&
+    /^[6-9]\d{9}$/.test(formData?.phoneNumber ?? '')
 
   return (
     <SafeAreaView style={styles.container}>
@@ -286,7 +290,7 @@ const Login = () => {
                   />
 
                   {/* Clear button */}
-                  {formData.phoneNumber.length > 0 && (
+                  {(formData?.phoneNumber?.length ?? 0) > 0 && (
                     <TouchableOpacity
                       style={styles.clearButton}
                       onPress={() => handleInputChange('phoneNumber', '')}

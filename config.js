@@ -1,0 +1,1 @@
+export const BASE_URL = 'http://toptenbazar.in:8000';

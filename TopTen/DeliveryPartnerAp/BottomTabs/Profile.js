@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import ImagePicker from "react-native-image-crop-picker";
 import { useDispatch } from 'react-redux'
-import { clearToken, setToken } from '../../../store/slices/authSlice'
+import { clearToken, clearTokens, setToken } from '../../../store/slices/authSlice'
 import { setProfilepic } from '../../../store/slices/userSlice'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -40,7 +40,7 @@ const Profile = () => {
                     onPress: () => {
                         console.log('User signed out');
                         AsyncStorage.clear()
-                        dispatch(clearToken())
+                        dispatch(clearTokens())
                         // Add your sign out logic here
                     },
                 },

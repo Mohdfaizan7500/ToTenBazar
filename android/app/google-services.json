@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "809033331815",
+    "project_id": "toptenbazar-5ca2f",
+    "storage_bucket": "toptenbazar-5ca2f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:809033331815:android:4c3aaf8c43c2bbe3fc50c2",
+        "android_client_info": {
+          "package_name": "com.toptenbazar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKXjRah-5Db24LVkSNPSbfmkAO83sEQGc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -16,29 +16,36 @@ import BRAND from '../../src/constant/color'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ClockIcon } from '../../src/SVGicons/icon';
 import { s, vs, ms, mvs } from 'react-native-size-matters';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
-import { setToken } from '../../store/slices/authSlice';
+import { loginUser, setToken } from '../../store/slices/authSlice';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 
 const OTPScreen = () => {
   const dispatch = useDispatch();
-  const [otp, setOtp] = useState(['', '', '', ''])
+  const [otp, setOtp] = useState(['1', '2', '3', '4', '5', '6'])
   const [isVerified, setIsVerified] = useState(false)
   const [timer, setTimer] = useState(30)
   const [canResend, setCanResend] = useState(false)
 
   const navigation = useNavigation()
 
-  // Refs must be declared at the top level, not conditionally
+  const route = useRoute()
+  // console.log('route:',route.params)
+  const maskedPhoneNumber = route.params.maskedPhone
+  const phonenumber = route.params.phoneNumber
+  // console.log("phonenumber:",phonenumber)
+
   const otpRef1 = useRef(null)
   const otpRef2 = useRef(null)
   const otpRef3 = useRef(null)
   const otpRef4 = useRef(null)
+  const otpRef5 = useRef(null)
+  const otpRef6 = useRef(null)
 
-  const otpRefs = [otpRef1, otpRef2, otpRef3, otpRef4]
+  const otpRefs = [otpRef1, otpRef2, otpRef3, otpRef4, otpRef5, otpRef6]
 
-  // Timer effect
   useEffect(() => {
     let interval;
     if (timer > 0 && !canResend) {
@@ -53,17 +60,15 @@ const OTPScreen = () => {
   }, [timer, canResend])
 
   const handleOtpChange = (value, index) => {
-    if (/^\d?$/.test(value)) { // Only allow single digits
+    if (/^\d?$/.test(value)) {
       const newOtp = [...otp]
       newOtp[index] = value
       setOtp(newOtp)
 
-      // Auto focus next input when a digit is entered
-      if (value && index < 3) {
+      if (value && index < 5) {
         otpRefs[index + 1].current?.focus()
       }
 
-      // Auto focus previous input when backspace is pressed
       if (value === '' && index > 0) {
         otpRefs[index - 1].current?.focus()
       }
@@ -79,25 +84,26 @@ const OTPScreen = () => {
   const handleVerify = async () => {
     const enteredOtp = otp.join('')
     console.log('otp on otp screen:', enteredOtp)
+    console.log('phonenumber', phonenumber)
 
     try {
-      // Save to AsyncStorage and dispatch to Redux
-      await AsyncStorage.setItem('token', enteredOtp)
-      dispatch(setToken(enteredOtp))
 
-      // Navigate based on OTP verification
+      // await AsyncStorage.setItem('token', enteredOtp)
+      const result = dispatch(loginUser({ username: phonenumber, otp: enteredOtp }))
+      // console.log('result:',result)
+
     } catch (error) {
       console.error('Error saving token:', error)
       Alert.alert('Error', 'Failed to verify OTP. Please try again.')
     }
   }
+
   const handleResendOtp = () => {
     if (canResend) {
-      setOtp(['', '', '', ''])
+      setOtp(['', '', '', '', '', ''])
       setIsVerified(false)
       setTimer(30)
       setCanResend(false)
-      // Focus first input after resend
       otpRefs[0].current?.focus()
       // Add resend OTP API call here
     }
@@ -122,7 +128,6 @@ const OTPScreen = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header with background elements */}
           <View style={styles.vegitableContainer}>
             <View style={styles.circle1} />
             <View style={styles.circle2} />
@@ -135,16 +140,14 @@ const OTPScreen = () => {
             </View>
           </View>
 
-          {/* Form content */}
           <View style={styles.bottomContent}>
             <Text style={styles.title}>Verify your</Text>
             <Text style={styles.title}>phone number</Text>
 
             <Text style={styles.subtitle}>
-              Enter the verification code we send you on: 708*****80
+              Enter the verification code we send you on: {maskedPhoneNumber}
             </Text>
 
-            {/* OTP Input Fields */}
             <View style={styles.otpContainer}>
               <Text style={styles.inputLabel}>Enter OTP</Text>
               <View style={styles.otpInputsContainer}>
@@ -163,8 +166,6 @@ const OTPScreen = () => {
                     maxLength={1}
                     textAlignVertical='center'
                     textAlign="center"
-                    // placeholder="-"
-
                     placeholderTextColor={BRAND.muted}
                     selectionColor={BRAND.primary}
                   />
@@ -172,7 +173,6 @@ const OTPScreen = () => {
               </View>
             </View>
 
-            {/* Resend OTP */}
             <View style={styles.resendContainer}>
               <Text style={styles.resendText}>Didn't receive the code? </Text>
               <TouchableOpacity
@@ -188,19 +188,17 @@ const OTPScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Timer */}
             <View style={styles.timerContainer}>
               <ClockIcon width={s(20)} height={s(20)} />
               <Text style={styles.timerText}>{formatTime(timer)}</Text>
             </View>
 
-            {/* Verify Button */}
             <TouchableOpacity
               style={[
                 styles.button,
-                otp.join('').length !== 4 && styles.buttonDisabled
+                otp.join('').length !== 6 && styles.buttonDisabled
               ]}
-              disabled={otp.join('').length !== 4}
+              disabled={otp.join('').length !== 6}
               onPress={handleVerify}
             >
               <Text style={styles.buttonText}>
@@ -208,7 +206,6 @@ const OTPScreen = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* Back to Sign Up */}
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>Wrong number? </Text>
               <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -217,7 +214,6 @@ const OTPScreen = () => {
             </View>
           </View>
 
-          {/* Extra space for keyboard */}
           <View style={styles.keyboardSpacer} />
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -302,14 +298,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: ms(8),
-    width: s(60),
-    height: vs(60),
+    width: s(47),
+    height: vs(47),
     fontSize: ms(20),
     fontWeight: '600',
     color: BRAND.text,
     backgroundColor: '#f9f9f9',
     textAlign: 'center',
-    textAlignVertical: 'center', // Add this line for vertical centering
+    textAlignVertical: 'center',
   },
   otpInputFilled: {
     borderColor: BRAND.primary,
@@ -396,5 +392,5 @@ const styles = StyleSheet.create({
   },
   keyboardSpacer: {
     height: Platform.OS === 'ios' ? vs(100) : vs(50),
-  },
+  }
 })

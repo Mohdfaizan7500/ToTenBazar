@@ -27,8 +27,12 @@ import PartnerLogin from '../AuthScreen/PartnerLogin';
 
 const AppNav = () => {
 
-    const token = useSelector(state => state?.auth?.token)
-    console.log("otp on appNav:", token)
+    const accessToken = useSelector(state => state?.auth?.accessToken)
+    const userType = useSelector(state => state.auth?.user_type ?? null)
+
+
+    console.log("accessToken on appNav:", accessToken)
+    console.log("userType:", userType)
 
     const Stack = createStackNavigator()
     const dispatch = useDispatch();
@@ -41,7 +45,7 @@ const AppNav = () => {
         return (
             <Stack.Navigator>
                 {
-                    token == '1234' ?
+                    userType === 'USER' ?
                         <Stack.Screen name='CustomerAppNav' component={CustomerAppNav} options={{ headerShown: false }} />
                         :
 
@@ -60,7 +64,7 @@ const AppNav = () => {
         return (
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {
-                    token ?
+                    accessToken ?
                         <>
                             <Stack.Screen name='SelectApp' component={SelectApp} />
                         </>

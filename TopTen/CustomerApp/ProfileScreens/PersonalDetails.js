@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,66 +12,75 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform
-} from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { useNavigation } from '@react-navigation/native'
-import { s, vs } from 'react-native-size-matters'
-import BRAND from '../../../src/constant/color'
-import { CameraIcon } from '../../../src/SVGicons/icon'
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { s, vs } from 'react-native-size-matters';
+import BRAND from '../../../src/constant/color';
+import { CameraIcon } from '../../../src/SVGicons/icon';
 import ImagePicker from "react-native-image-crop-picker";
-import { useDispatch, useSelector } from 'react-redux'
-import { setProfilepic } from '../../../store/slices/userSlice'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useDispatch, useSelector } from 'react-redux';
+import { setProfilepic } from '../../../store/slices/userSlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateUserProfile } from '../../../store/slices/authSlice';
 
 const PersonalDetails = () => {
-  const navigation = useNavigation()
-  const [modalVisible, setModalVisible] = useState(false)
-  const profile = useSelector(state => state?.user?.profilepic)
-  const [profilepic, setprofilepic] = useState(profile)
+  const navigation = useNavigation();
+  const profile = useSelector(state => state?.auth?.profile);
+  console.log(profile)
+  const dispatch = useDispatch();
 
-
-  console.log("profile:", profile)
-
-  const dispatch= useDispatch()
+  const [modalVisible, setModalVisible] = useState(false);
+  const [profilepic, setprofilepic] = useState(null);
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phonenumber: '',
+    location: '',
+  });
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
 
   useEffect(() => {
-
-    setProfilepic(profile)
-  }, [])
-
-  const [formData, setFormData] = useState({
-    fullName: '',
-    phone: '',
-    email: 'albertstevano@gmail.com'
-  })
+    if (profile) {
+      setFormData({
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
+        phonenumber: profile.phone_number || '',
+        location: profile.location || '',
+      });
+      setprofilepic(profile.profile_pic || null);
+      setPhoneVerified(profile.phone_verified || false);
+      setEmailVerified(profile.email_verified || false);
+    }
+  }, [profile]);
 
   const handleSave = () => {
-    console.log('Saved data:', formData)
-    Alert.alert("Success", 'Your profile has been Update')
-    navigation.goBack()
-  }
+    dispatch(updateUserProfile(formData))
+      .unwrap()
+      .then(() => {
+        Alert.alert('Success', 'Profile updated successfully');
+        navigation.goBack();
+      })
+      .catch((error) => {
+        Alert.alert('Error', error || 'Failed to update profile');
+      });
+  };
 
   const handleChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
-    }))
-  }
+      [field]: value,
+    }));
+  };
 
-  const handleCameraPress = () => {
-    setModalVisible(true)
-  }
-
-  const handleAvatarPress = () => {
-    setModalVisible(true)
-  }
-  const handleCancel = () => {
-    setModalVisible(false)
-  }
+  const handleCameraPress = () => setModalVisible(true);
+  const handleAvatarPress = () => setModalVisible(true);
+  const handleCancel = () => setModalVisible(false);
 
   const handleTakePhoto = () => {
-    setModalVisible(false)
-    // Alert.alert('Successh', 'Take Photo option selected ')
+    setModalVisible(false);
     ImagePicker.openCamera({
       width: 300,
       height: 300,
@@ -79,23 +89,20 @@ const PersonalDetails = () => {
       freeStyleCropEnabled: true,
       avoidEmptySpaceAroundImage: true,
       cropperCircleOverlay: true,
-      includeBase64: true
-    }).then(async (image) => {
-      console.log("image:", image.path)
-      dispatch(setProfilepic(image?.path))
-      AsyncStorage.setItem('userprofilepic',image?.path)
-      setprofilepic(image?.path)
+      includeBase64: true,
+    }).then(image => {
+      dispatch(setProfilepic(image.path));
+      AsyncStorage.setItem('userprofilepic', image.path);
+      setprofilepic(image.path);
     }).catch(error => {
-      console.log('Camera error:', error);
       if (error.code !== 'E_PICKER_CANCELLED') {
-        Alert.alert('Error', 'faild');
+        Alert.alert('Error', 'Failed to take photo');
       }
     });
-  }
+  };
 
   const handleChooseFromGallery = () => {
-    setModalVisible(false)
-
+    setModalVisible(false);
     ImagePicker.openPicker({
       width: 300,
       height: 300,
@@ -104,19 +111,17 @@ const PersonalDetails = () => {
       freeStyleCropEnabled: true,
       avoidEmptySpaceAroundImage: true,
       cropperCircleOverlay: true,
-      includeBase64: true
-    }).then(async (image) => {
-      dispatch(setProfilepic(image?.path))
-      AsyncStorage.setItem('userprofilepic',image?.path)
-      setprofilepic(image?.path)
-
+      includeBase64: true,
+    }).then(image => {
+      dispatch(setProfilepic(image.path));
+      AsyncStorage.setItem('userprofilepic', image.path);
+      setprofilepic(image.path);
     }).catch(error => {
-      console.log('Gallery error:', error);
       if (error.code !== 'E_PICKER_CANCELLED') {
-        Alert.alert('Error', 'Fails to choose photo from gaillry');
+        Alert.alert('Error', 'Failed to choose photo from gallery');
       }
     });
-  }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -135,7 +140,7 @@ const PersonalDetails = () => {
             <Image
               source={profilepic ? { uri: profilepic } : require('../../../src/images/UserImage.png')}
               style={styles.avatarImage}
-              resizeMode='cover'
+              resizeMode="cover"
             />
           </View>
           <TouchableOpacity onPress={handleCameraPress} style={styles.cameraIconContainer}>
@@ -144,34 +149,66 @@ const PersonalDetails = () => {
         </TouchableOpacity>
 
         <View style={styles.inputSection}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>First Name</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="Enter Your Full Name"
+            placeholder="Enter Your First Name"
             placeholderTextColor={BRAND.muted}
-            value={formData.fullName}
-            onChangeText={(text) => handleChange('fullName', text)}
+            value={formData.first_name}
+            onChangeText={text => handleChange('first_name', text)}
           />
         </View>
 
         <View style={styles.inputSection}>
-          <Text style={styles.label}>Phone</Text>
+          <Text style={styles.label}>Last Name</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Enter Your Last Name"
+            placeholderTextColor={BRAND.muted}
+            value={formData.last_name}
+            onChangeText={text => handleChange('last_name', text)}
+          />
+        </View>
+
+        <View style={styles.inputSection}>
+          <Text style={styles.label}>Phone Number</Text>
           <TextInput
             style={styles.textInput}
             placeholder="Enter Your Phone Number"
             placeholderTextColor={BRAND.muted}
             keyboardType="phone-pad"
-            value={formData.phone}
-            onChangeText={(text) => handleChange('phone', text)}
+            value={formData.phonenumber}
+            onChangeText={text => handleChange('phonenumber', text)}
           />
+          <Text style={[styles.verificationText, phoneVerified ? styles.verified : styles.notVerified]}>
+            {phoneVerified ? 'Phone Verified' : 'Phone Not Verified'}
+          </Text>
         </View>
 
         <View style={styles.inputSection}>
           <Text style={styles.label}>Email</Text>
           <TextInput
-            style={[styles.textInput, styles.disabledInput]}
+            style={styles.textInput}
+            placeholder="Enter Your Email"
+            placeholderTextColor={BRAND.muted}
             value={formData.email}
-            editable={false}
+            onChangeText={text => handleChange('email', text)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Text style={[styles.verificationText, emailVerified ? styles.verified : styles.notVerified]}>
+            {emailVerified ? 'Email Verified' : 'Email Not Verified'}
+          </Text>
+        </View>
+
+        <View style={styles.inputSection}>
+          <Text style={styles.label}>Location</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Enter Your Location"
+            placeholderTextColor={BRAND.muted}
+            value={formData.location}
+            onChangeText={text => handleChange('location', text)}
           />
         </View>
       </ScrollView>
@@ -182,7 +219,7 @@ const PersonalDetails = () => {
 
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent
         visible={modalVisible}
         onRequestClose={handleCancel}
       >
@@ -190,19 +227,13 @@ const PersonalDetails = () => {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Change Profile Photo</Text>
 
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleTakePhoto}
-            >
+            <TouchableOpacity style={styles.modalButton} onPress={handleTakePhoto}>
               <Text style={styles.modalButtonText}>Take Photo</Text>
             </TouchableOpacity>
 
             <View style={styles.modalDivider} />
 
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleChooseFromGallery}
-            >
+            <TouchableOpacity style={styles.modalButton} onPress={handleChooseFromGallery}>
               <Text style={styles.modalButtonText}>Choose from Gallery</Text>
             </TouchableOpacity>
 
@@ -218,10 +249,10 @@ const PersonalDetails = () => {
         </View>
       </Modal>
     </KeyboardAvoidingView>
-  )
-}
+  );
+};
 
-export default PersonalDetails
+export default PersonalDetails;
 
 const styles = StyleSheet.create({
   container: {
@@ -236,13 +267,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: s(16),
     paddingTop: vs(16),
     paddingBottom: vs(16),
-  },
-  headerTitle: {
-    fontSize: s(20),
-    fontWeight: '700',
-    color: BRAND.text,
-    marginBottom: vs(20),
-    textAlign: 'center',
   },
   inputSection: {
     marginBottom: vs(20),
@@ -263,13 +287,21 @@ const styles = StyleSheet.create({
     fontSize: s(14),
     color: BRAND.text,
   },
-  disabledInput: {
-    backgroundColor: '#f8f8f8',
-    color: BRAND.muted,
+  verificationText: {
+    marginTop: vs(6),
+    fontSize: s(12),
+  },
+  verified: {
+    color: 'green',
+    fontWeight: '600',
+  },
+  notVerified: {
+    color: 'red',
+    fontWeight: '600',
   },
   saveButton: {
-    width: "94%",
-    alignSelf: "center",
+    width: '94%',
+    alignSelf: 'center',
     backgroundColor: BRAND.primary,
     borderRadius: s(8),
     paddingVertical: vs(10),
@@ -286,7 +318,7 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginBottom: vs(20),
-    alignSelf: "center"
+    alignSelf: 'center',
   },
   avatar: {
     width: s(100),
@@ -295,28 +327,27 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.bg,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: "hidden",
+    overflow: 'hidden',
     borderWidth: s(1.5),
     borderColor: BRAND.primary,
   },
   avatarImage: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
   },
   cameraIconContainer: {
-    position: "absolute",
+    position: 'absolute',
     width: s(26),
     height: s(26),
     backgroundColor: BRAND.white,
     borderRadius: s(13),
     right: s(4),
     bottom: s(4),
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: s(1),
     borderColor: BRAND.primary,
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -359,4 +390,4 @@ const styles = StyleSheet.create({
     color: BRAND.error,
     fontWeight: '600',
   },
-})
+});

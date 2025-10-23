@@ -1,11 +1,11 @@
-import { 
-  Image, 
-  StatusBar, 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  Image,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +16,9 @@ import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import BRAND from '../../src/constant/color'
 import { s, vs, ms } from 'react-native-size-matters'
+import { useDispatch } from 'react-redux'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { setToken } from '../../store/slices/authSlice'
 
 const PartnerLogin = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +28,8 @@ const PartnerLogin = () => {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [secureTextEntry, setSecureTextEntry] = useState(true)
+  const dispatch = useDispatch();
+
 
   const validateForm = () => {
     const newErrors = {}
@@ -62,7 +67,10 @@ const PartnerLogin = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 1500))
       if (formData.phoneNumber === '7078254220' && formData.password === '123456') {
-        Alert.alert('Login Successful!', 'Welcome back, Partner!')
+        // Alert.alert('Login Successful!', 'Welcome back, Partner!')
+        await AsyncStorage.setItem('token', '1235')
+        dispatch(setToken('1235'))
+
       } else {
         Alert.alert('Login Failed', 'Invalid phone number or password.')
       }

@@ -5,7 +5,7 @@ import { s, vs, ms } from 'react-native-size-matters'
 import BRAND from '../../../src/constant/color'
 import { useNavigation } from '@react-navigation/native'
 import { useDispatch, useSelector } from 'react-redux'
-import { clearToken, setToken } from '../../../store/slices/authSlice'
+import { clearToken, clearTokens, setToken } from '../../../store/slices/authSlice'
 import ImagePicker from "react-native-image-crop-picker";
 import { setProfilepic } from '../../../store/slices/userSlice'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -14,9 +14,9 @@ const Profile = () => {
   const iconWidth = s(16)
   const iconHeight = s(16)
   const [modalVisible, setModalVisible] = useState(false)
-  const profile = useSelector(state => state?.user?.profilepic)
-  console.log("xyz:",profile)
-  const [profilepic, setprofilepic] = useState(profile)
+  const profile = useSelector(state => state?.auth?.profile)
+  console.log("profile pic:", profile)
+  const [profilepic, setprofilepic] = useState(profile?.profile_pic)
 
 
   const navigation = useNavigation();
@@ -43,7 +43,7 @@ const Profile = () => {
             console.log('User signed out');
             // await dispatch(setToken(null));
             AsyncStorage.clear()
-            dispatch(clearToken())
+            dispatch(clearTokens())
 
 
             // Add your sign out logic here
@@ -100,7 +100,7 @@ const Profile = () => {
       includeBase64: true
     }).then(async (image) => {
       dispatch(setProfilepic(image?.path))
-      console.log("profile on profile",image?.path)
+      console.log("profile on profile", image?.path)
       setprofilepic(image?.path)
 
     }).catch(error => {
@@ -115,6 +115,12 @@ const Profile = () => {
   const handleCancel = () => {
     setModalVisible(false)
   }
+
+  function capitalizeFirstLetter(name) {
+    if (!name) return ''; // handle empty or undefined strings
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+
 
   return (
     <View style={styles.container}>
@@ -132,9 +138,12 @@ const Profile = () => {
           <CameraIcon width={s(16)} height={s(16)} />
         </TouchableOpacity>
       </TouchableOpacity>
+      <Text style={styles.name}>
+        {capitalizeFirstLetter(profile?.first_name ?? '')} {capitalizeFirstLetter(profile?.last_name ?? '')}
+      </Text>
 
-      <Text style={styles.name}>Albert Stevenson Bydzhist</Text>
-      <Text style={styles.email}>AlbertStevenson@gmail.com</Text>
+      <Text style={styles.email}>{profile?.email ?? ''}</Text>
+
 
       <View style={styles.menuCard}>
         <MenuItem

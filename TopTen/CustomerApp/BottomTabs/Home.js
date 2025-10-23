@@ -194,7 +194,7 @@ const Home = () => {
       <View style={styles.bgContainer}></View>
 
       <View style={styles.header}>
-        <View style={styles.locationContainer}>
+        <TouchableOpacity style={styles.locationContainer} onPress={()=>navigation.navigate('Address')}>
           <View style={styles.iconCircle}>
             <LocationIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
           </View>
@@ -206,7 +206,7 @@ const Home = () => {
             </View>
             <Text style={styles.address}>Karol Bagh, New Delhi</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.iconsContainer}>
           <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notification')}>
@@ -447,6 +447,7 @@ const styles = StyleSheet.create({
   },
   locationContainer: {
     flexDirection: "row",
+    // backgroundColor:"red",
     alignItems: "center",
     gap: s(10),
   },
