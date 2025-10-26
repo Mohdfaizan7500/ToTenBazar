@@ -1,59 +1,41 @@
-import { Dimensions, FlatList, Image, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import React, { useRef, useState, useEffect } from 'react'
+import { Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import BRAND from '../../../src/constant/color'
 import { BagIcon, BellIcon, DownArrowIcon, FavoriteIcon, LocationIcon, SearchIcon } from '../../../src/SVGicons/icon'
 import { s, vs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
+import { useSelector } from 'react-redux'
 
 const Home = () => {
-  // All hooks must be called at the top level, in the same order
+  // Refs and state
   const flatListRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const navigation = useNavigation() // This must be called after useState but before useEffect
+  const navigation = useNavigation()
 
-  const scrollCard = [
-    {
-      title: 'Are you a Coca-Cola? Because you\'re soda-lightful!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you Lay\'s? Because I can\'t stop thinking about you!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Is your name Cadbury? Because you\'re irresistibly sweet!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you Maggi? Because you\'re ready in 2 minutes!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you Pepsi? Because you\'re the choice of a new generation!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you Oreo? Because you\'re the best part of my day!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you Red Bull? Because you give me wings!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you KitKat? Because I need a break with you!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you Domino\'s? Because you\'ve delivered love to my heart!',
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: 'Are you McDonald\'s? Because I\'m lovin\' it!',
-      image: require('../../../src/images/cocacola.png')
-    }
-  ]
+  // Redux selectors - moved to individual selectors to prevent unnecessary re-renders
+  const Banner_Config = useSelector(state => state.user.Baner_Config)
+  const ProductCategories = useSelector(state => state.user.categories)
+  const allGroups = useSelector(state => state.user.allGroups)
+  const groupProducts = useSelector(state => state.user.groupProducts)
+  const isLoading = useSelector(state => state.user.isLoading)
+  const error = useSelector(state => state.user.error)
 
+  const allgroupnames = allGroups?.active_group_names;
+
+  // Memoized data
+  const slicedBannerConfig = useMemo(() =>
+    Banner_Config ? Banner_Config.slice(0, 3) : [],
+    [Banner_Config]
+  )
+
+  const randomCategories = useMemo(() => {
+    if (!ProductCategories) return [];
+    return [...ProductCategories]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 8);
+  }, [ProductCategories])
+
+  // Static data - moved outside component or made stable with empty dependencies
   const categoriesitem = [
     {
       title: 'cafe',
@@ -70,41 +52,6 @@ const Home = () => {
     {
       title: 'Mobiles',
       image: require('../../../src/images/mobiles.png')
-    }
-  ]
-
-  const categories = [
-    {
-      title: `Vegetables \n& Fruits`,
-      image: require('../../../src/images/fruits.png')
-    },
-    {
-      title: `Dairy \n& Breakfast`,
-      image: require('../../../src/images/dairy.png')
-    },
-    {
-      title: `Cold Drinks \n& Juices`,
-      image: require('../../../src/images/cocacola.png')
-    },
-    {
-      title: `Instant \n& Frozen Food`,
-      image: require('../../../src/images/instant.png')
-    },
-    {
-      title: `Tea \n& Coffee`,
-      image: require('../../../src/images/cafe.png')
-    },
-    {
-      title: `Atta, Rice \n& Dal`,
-      image: require('../../../src/images/atta.png')
-    },
-    {
-      title: `Masala, Oil \n& Dry Fruits`,
-      image: require('../../../src/images/masale.png')
-    },
-    {
-      title: `Chicken, Meat \n& Fish`,
-      image: require('../../../src/images/fish.png')
     }
   ]
 
@@ -155,37 +102,284 @@ const Home = () => {
 
   // Auto scroll logic
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (flatListRef.current) {
-        let nextIndex = currentIndex + 1
-        if (nextIndex >= scrollCard.length) {
-          nextIndex = 0
-        }
+    if (slicedBannerConfig.length > 0 && flatListRef.current) {
+      const interval = setInterval(() => {
+        setCurrentIndex(prevIndex => {
+          const nextIndex = prevIndex + 1 >= slicedBannerConfig.length ? 0 : prevIndex + 1;
 
-        flatListRef.current.scrollToIndex({
-          index: nextIndex,
-          animated: true,
-          viewPosition: 0.5
-        })
-        setCurrentIndex(nextIndex)
-      }
-    }, 300000)
+          flatListRef.current?.scrollToIndex({
+            index: nextIndex,
+            animated: true,
+            viewPosition: 0.9,
+          });
 
-    return () => clearInterval(interval)
-  }, [currentIndex, scrollCard.length])
+          return nextIndex;
+        });
+      }, 2000);
 
-  // Handle scroll end to update current index
-  const handleScrollEnd = (event) => {
+      return () => clearInterval(interval);
+    }
+  }, [slicedBannerConfig.length]);
+
+  // Event handlers
+  const handleScrollEnd = useCallback((event) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x
     const cardWidth = Dimensions.get('window').width - 50 + s(30)
     const index = Math.round(contentOffsetX / cardWidth)
     setCurrentIndex(index)
-  }
+  }, [])
 
-  // Handle scroll begin to reset timer (optional)
-  const handleScrollBegin = () => {
-    // You can add logic here to pause auto-scroll during manual scroll
-  }
+  const handleScrollBegin = useCallback(() => {
+    // Optional: Add logic to pause auto-scroll during manual scroll
+  }, [])
+
+  const handleCategoryPress = useCallback((item) => {
+    console.log(item);
+    navigation.navigate('CategoriesCatlog', {
+      title: item.category
+        .replace(/\n/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' & ')
+    });
+  }, [navigation])
+
+  const formatString = useCallback((str) => {
+    return str
+      .split(' ')
+      .filter(word => word.trim() !== '')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' & \n');
+  }, [])
+
+  // Render functions with stable dependencies
+  const renderBannerItem = useCallback(({ item, index }) => (
+    <View style={[
+      styles.card,
+      index === currentIndex && styles.activeCard
+    ]}>
+      <View style={styles.cardContent}>
+        <Text style={styles.cardText}>{item?.banner_name}</Text>
+        <TouchableOpacity style={styles.ShopNowButton}>
+          <Text style={styles.ShopNowButtonText}>Shop Now</Text>
+        </TouchableOpacity>
+      </View>
+      <Image
+        source={{ uri: item.banner_img }}
+        style={styles.imageSize}
+        resizeMode='cover'
+      />
+    </View>
+  ), [currentIndex])
+
+  const renderPagerItem = useCallback(({ item, index }) => (
+    <View style={[
+      styles.pager,
+      index === currentIndex && styles.activePager
+    ]} />
+  ), [currentIndex])
+
+  const renderHorizontalCategoryItem = useCallback(({ item, index }) => (
+    <View style={styles.categoryItemWrapper}>
+      <View style={styles.categoriesContainer}>
+        <Image
+          source={item.image}
+          style={styles.categoryImageFull}
+          resizeMode='cover'
+        />
+      </View>
+      <Text style={styles.categoryItemTitle}>{item.title}</Text>
+    </View>
+  ), [])
+
+  const renderGridCategoryItem = useCallback(({ item, index }) => (
+    <TouchableOpacity
+      style={styles.gridCategoryItem}
+      onPress={() => handleCategoryPress(item)}>
+      <View style={styles.categoriesBox}>
+        <Image
+          source={{ uri: item?.images?.[0]?.image_url }}
+          style={styles.categoryImageFull}
+          resizeMode="contain"
+        />
+      </View>
+      <Text style={styles.gridCategoryTitle}>
+        {formatString(item.category)}
+      </Text>
+    </TouchableOpacity>
+  ), [handleCategoryPress, formatString])
+
+  // Updated renderProductItem with stable dependencies
+  const renderProductItem = useCallback(({ item, index }) => {
+    // Check if item is from API (has images array) or static data
+    const isApiData = item?.product_image && Array.isArray(item.product_image);
+
+    return (
+      <View style={styles.productCard}>
+        <View style={styles.productImageContainer}>
+          <View style={{ borderRadius: s(8), overflow: "hidden", backgroundColor: BRAND.muted, }}>
+            <Image
+              source={isApiData ? { uri: item?.product_image[0]?.image_url } : item.image}
+              style={styles.productImage}
+              resizeMode='cover'
+            />
+          </View>
+        </View>
+        <View style={styles.productInfo}>
+          <Text style={styles.productTitle} numberOfLines={2}>
+            {isApiData ? item?.product_name : item.title}
+          </Text>
+          <View style={styles.productDetails}>
+            <View style={{ width: s(70), }}>
+              <Text style={styles.productWeight} numberOfLines={1}>
+                {isApiData ? (item.description || 'Product description') : item.weight}
+              </Text>
+              <Text style={styles.productPrice}>
+                ₹{isApiData ? (item.product_selling_price || 'N/A') : item.price}
+                {!isApiData && item.mrp && (
+                  <Text style={styles.productMrp}> ${item.mrp}</Text>
+                )}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.addButton}>
+              <Text style={styles.addButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }, [])
+
+  // Memoized group sections to prevent unnecessary re-renders
+  const groupSections = useMemo(() => {
+    if (!allgroupnames) return null;
+
+    return allgroupnames.map((groupName, index) => {
+      const groupData = groupProducts?.[groupName]?.[1]?.data;
+      const displayData = groupData && groupData.length > 0 ? groupData : BestDeal;
+
+      return (
+        <View key={`${groupName}-${index}`} style={{ width: "100%", marginBottom: 10 }}>
+          <View style={[styles.HeadingContainer, styles.bestDealHeading]}>
+            <Text style={styles.HeadingText}>{groupName}</Text>
+            <Text style={styles.SeeAllText} onPress={() => {
+              console.log(displayData)
+              navigation.navigate('Catlog', { title: groupName })
+            }}>See All</Text>
+          </View>
+
+          {displayData && displayData.length > 0 ? (
+            <FlatList
+              contentContainerStyle={styles.productCardFlatlist}
+              horizontal
+              data={displayData}
+              keyExtractor={(item, itemIndex) => `${groupName}-${itemIndex}`}
+              renderItem={renderProductItem}
+              showsHorizontalScrollIndicator={false}
+            />
+          ) : (
+            <Text style={styles.noProductsText}>No products available</Text>
+          )}
+        </View>
+      );
+    });
+  }, [allgroupnames, groupProducts, navigation, renderProductItem]);
+
+  // Main content component - memoized to prevent unnecessary re-renders
+  const MainContent = useMemo(() => {
+    return (
+      <View style={styles.scrollingCardView}>
+        {/* Banner Carousel */}
+        {slicedBannerConfig.length > 0 && (
+          <>
+            <FlatList
+              ref={flatListRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              pagingEnabled
+              contentContainerStyle={styles.flatListCard}
+              data={slicedBannerConfig}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={renderBannerItem}
+              onMomentumScrollEnd={handleScrollEnd}
+              onScrollBeginDrag={handleScrollBegin}
+              getItemLayout={(data, index) => ({
+                length: Dimensions.get('window').width - 50 + s(30),
+                offset: (Dimensions.get('window').width - 50 + s(30)) * index,
+                index,
+              })}
+            />
+
+            {/* Pager Indicators */}
+            <FlatList
+              contentContainerStyle={styles.pagerFlatList}
+              horizontal
+              data={slicedBannerConfig}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={renderPagerItem}
+            />
+          </>
+        )}
+
+        {/* Horizontal Categories */}
+        <FlatList
+          contentContainerStyle={styles.categoriesContainerFlatlist}
+          data={categoriesitem}
+          horizontal
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderHorizontalCategoryItem}
+          scrollEnabled={false}
+        />
+
+        {/* Shop By Category Header */}
+        <View style={styles.HeadingContainer}>
+          <Text style={styles.HeadingText}>Shop By Category</Text>
+          <Text style={styles.SeeAllText} onPress={() => navigation.navigate('Categories')}>See All</Text>
+        </View>
+
+        {/* Grid Categories */}
+        <View style={{ backgroundColor: BRAND.bg, marginBottom: s(15) }}>
+          <FlatList
+            contentContainerStyle={styles.gridCategoriesContainer}
+            data={randomCategories}
+            numColumns={4}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={renderGridCategoryItem}
+          />
+        </View>
+
+        {/* Dynamic Group Sections */}
+        {groupSections}
+
+        {/* Loading State */}
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading products...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Error: {error}</Text>
+          </View>
+        )}
+      </View>
+    );
+  }, [
+    slicedBannerConfig,
+    randomCategories,
+    isLoading,
+    error,
+    groupSections,
+    renderBannerItem,
+    renderPagerItem,
+    renderHorizontalCategoryItem,
+    renderGridCategoryItem,
+    handleScrollEnd,
+    handleScrollBegin,
+    navigation
+  ]);
 
   return (
     <View style={styles.container}>
@@ -193,12 +387,12 @@ const Home = () => {
 
       <View style={styles.bgContainer}></View>
 
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.locationContainer} onPress={()=>navigation.navigate('Address')}>
+        <TouchableOpacity style={styles.locationContainer} onPress={() => navigation.navigate('Address')}>
           <View style={styles.iconCircle}>
             <LocationIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
           </View>
-
           <View>
             <View style={styles.addressHeader}>
               <Text style={styles.homeText}>Home</Text>
@@ -218,6 +412,7 @@ const Home = () => {
         </View>
       </View>
 
+      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <SearchIcon width={s(22)} height={s(22)} stroke={BRAND.muted} />
         <TextInput
@@ -227,193 +422,12 @@ const Home = () => {
         />
       </View>
 
-      {/* Replace ScrollView with FlatList for main content */}
+      {/* Main Content */}
       <FlatList
         style={styles.mainFlatList}
-        data={[1]} // Dummy data
+        data={[1]} // Dummy data for single item
         keyExtractor={(item, index) => index.toString()}
-        renderItem={() => (
-          <View style={styles.scrollingCardView}>
-            {/* Banner Carousel FlatList */}
-            <FlatList
-              ref={flatListRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              pagingEnabled
-              contentContainerStyle={styles.flatListCard}
-              data={scrollCard}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item, index }) => (
-                <View style={[
-                  styles.card,
-                  index === currentIndex && styles.activeCard
-                ]}>
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardText}>{item.title}</Text>
-                    <TouchableOpacity style={styles.ShopNowButton}>
-                      <Text style={styles.ShopNowButtonText}>Shop Now</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Image source={item.image}
-                    style={styles.imageSize}
-                    resizeMode='cover'
-                  />
-                </View>
-              )}
-              onMomentumScrollEnd={handleScrollEnd}
-              onScrollBeginDrag={handleScrollBegin}
-              getItemLayout={(data, index) => ({
-                length: Dimensions.get('window').width - 50 + s(30),
-                offset: (Dimensions.get('window').width - 50 + s(30)) * index,
-                index,
-              })}
-            />
-
-            {/* Pager Indicators FlatList */}
-            <FlatList
-              contentContainerStyle={styles.pagerFlatList}
-              horizontal
-              data={scrollCard}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item, index }) => (
-                <View style={[
-                  styles.pager,
-                  index === currentIndex && styles.activePager
-                ]} />
-              )}
-            />
-
-            {/* Horizontal Categories FlatList */}
-            <FlatList
-              contentContainerStyle={styles.categoriesContainerFlatlist}
-              data={categoriesitem}
-              horizontal
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item, index }) => (
-                <View style={styles.categoryItemWrapper}>
-                  <View style={styles.categoriesContainer}>
-                    <Image
-                      source={item.image}
-                      style={styles.categoryImageFull}
-                      resizeMode='cover'
-                    />
-                  </View>
-                  <Text style={styles.categoryItemTitle}>{item.title}</Text>
-                </View>
-              )}
-            />
-
-            <View style={styles.HeadingContainer}>
-              <Text style={styles.HeadingText}>Shop By Category</Text>
-              <Text style={styles.SeeAllText} onPress={() => navigation.navigate('Categories')}>See All</Text>
-            </View>
-
-            {/* Grid Categories FlatList */}
-            <View style={{ backgroundColor: BRAND.bg }}>
-              <FlatList
-                contentContainerStyle={styles.gridCategoriesContainer}
-                data={categories}
-                numColumns={4}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ item, index }) => (
-                  <View style={styles.gridCategoryItem}>
-                    <View style={styles.categoriesBox}>
-                      <Image
-                        source={item.image}
-                        style={styles.categoryImageFull}
-                        resizeMode='contain'
-                      />
-                    </View>
-                    <Text style={styles.gridCategoryTitle}>{item.title}</Text>
-                  </View>
-                )}
-              />
-            </View>
-
-            <View style={[styles.HeadingContainer, styles.bestDealHeading]}>
-              <Text style={styles.HeadingText}>Best Deal</Text>
-              <Text style={styles.SeeAllText}>See All</Text>
-            </View>
-
-            <FlatList
-              contentContainerStyle={styles.productCardFlatlist}
-              horizontal
-              data={BestDeal}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item, index }) => (
-                <View style={styles.productCard}>
-                  <View style={styles.productImageContainer}>
-                    <TouchableOpacity style={styles.favoriteIcon}>
-                      <FavoriteIcon width={s(20)} height={s(20)} />
-                    </TouchableOpacity>
-                    <Image
-                      source={item.image}
-                      style={styles.productImage}
-                      resizeMode='contain'
-                    />
-                  </View>
-                  <View style={styles.productInfo}>
-                    <Text style={styles.productTitle}>{item.title}</Text>
-                    <View style={styles.productDetails}>
-                      <View>
-                        <Text style={styles.productWeight}>{item.weight}</Text>
-                        <Text style={styles.productPrice}>
-                          $ {item.price}
-                          <Text style={styles.productMrp}> ${item.mrp}</Text>
-                        </Text>
-                      </View>
-                      <TouchableOpacity style={styles.addButton}>
-                        <Text style={styles.addButtonText}>Add</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-            />
-
-            {/* Must Have */}
-            <View style={[styles.HeadingContainer, styles.mustHaveHeading]}>
-              <Text style={styles.HeadingText}>Must-Have</Text>
-              <Text style={styles.SeeAllText}>See All</Text>
-            </View>
-
-            <FlatList
-              contentContainerStyle={styles.productCardFlatlist}
-              horizontal
-              data={BestDeal}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item, index }) => (
-                <View style={styles.productCard}>
-                  <View style={styles.productImageContainer}>
-                    <TouchableOpacity style={styles.favoriteIcon}>
-                      <FavoriteIcon width={s(20)} height={s(20)} />
-                    </TouchableOpacity>
-                    <Image
-                      source={item.image}
-                      style={styles.productImage}
-                      resizeMode='contain'
-                    />
-                  </View>
-                  <View style={styles.productInfo}>
-                    <Text style={styles.productTitle}>{item.title}</Text>
-                    <View style={styles.productDetails}>
-                      <View>
-                        <Text style={styles.productWeight}>{item.weight}</Text>
-                        <Text style={styles.productPrice}>
-                          $ {item.price}
-                          <Text style={styles.productMrp}> ${item.mrp}</Text>
-                        </Text>
-                      </View>
-                      <TouchableOpacity style={styles.addButton}>
-                        <Text style={styles.addButtonText}>Add</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-            />
-          </View>
-        )}
+        renderItem={() => MainContent}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -422,6 +436,7 @@ const Home = () => {
 
 export default Home
 
+// Styles remain the same...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -447,7 +462,6 @@ const styles = StyleSheet.create({
   },
   locationContainer: {
     flexDirection: "row",
-    // backgroundColor:"red",
     alignItems: "center",
     gap: s(10),
   },
@@ -517,13 +531,14 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width - s(40),
     height: vs(130),
     backgroundColor: BRAND.muted,
-    marginHorizontal: s(20),
+    marginHorizontal: s(10),
     paddingHorizontal: s(10),
-    paddingStart: s(20),
     borderRadius: s(12),
     justifyContent: 'space-between',
     elevation: 5,
     opacity: 0.7,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   activeCard: {
     opacity: 1,
@@ -531,10 +546,11 @@ const styles = StyleSheet.create({
     flexDirection: "row"
   },
   cardContent: {
-    justifyContent: "space-between",
-    height: "100%",
+    width: '65%',
+    justifyContent: 'space-between',
+    height: '100%',
     paddingVertical: vs(10),
-    width: '65%'
+    paddingLeft: s(10),
   },
   cardText: {
     color: BRAND.text,
@@ -576,7 +592,8 @@ const styles = StyleSheet.create({
   },
   imageSize: {
     width: s(100),
-    height: '100%',
+    height: vs(110),
+    borderRadius: s(12),
   },
   categoriesContainer: {
     width: Dimensions.get('window').width / s(4) - s(2),
@@ -650,7 +667,7 @@ const styles = StyleSheet.create({
   gridCategoriesContainer: {
     alignItems: "center",
     paddingVertical: s(10),
-    backgroundColor: BRAND.bg
+    backgroundColor: BRAND.bg,
   },
   gridCategoryItem: {
     backgroundColor: BRAND.bg,
@@ -665,10 +682,7 @@ const styles = StyleSheet.create({
     color: BRAND.text
   },
   bestDealHeading: {
-    marginTop: vs(15)
-  },
-  mustHaveHeading: {
-    marginTop: vs(15)
+    marginTop: vs(10)
   },
   productImageContainer: {
     width: "100%",
@@ -678,7 +692,8 @@ const styles = StyleSheet.create({
   favoriteIcon: {
     position: "absolute",
     top: s(10),
-    right: s(10)
+    right: s(10),
+    zIndex: 1
   },
   productImage: {
     width: "100%",
@@ -722,5 +737,27 @@ const styles = StyleSheet.create({
     color: BRAND.white,
     fontSize: s(14),
     fontWeight: '500'
+  },
+  loadingContainer: {
+    padding: s(20),
+    alignItems: 'center'
+  },
+  loadingText: {
+    color: BRAND.text,
+    fontSize: s(14)
+  },
+  errorContainer: {
+    padding: s(20),
+    alignItems: 'center'
+  },
+  errorText: {
+    color: BRAND.error,
+    fontSize: s(14)
+  },
+  noProductsText: {
+    textAlign: 'center',
+    color: BRAND.muted,
+    fontSize: s(14),
+    padding: s(20)
   }
 })

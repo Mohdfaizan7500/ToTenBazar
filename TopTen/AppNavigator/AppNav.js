@@ -28,7 +28,7 @@ import PartnerLogin from '../AuthScreen/PartnerLogin';
 const AppNav = () => {
 
     const accessToken = useSelector(state => state?.auth?.accessToken)
-    const userType = useSelector(state => state.auth?.user_type ?? null)
+    const userType = useSelector(state => state.auth?.user_type)
 
 
     console.log("accessToken on appNav:", accessToken)

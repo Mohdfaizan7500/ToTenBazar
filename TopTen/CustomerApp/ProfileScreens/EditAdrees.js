@@ -1,7 +1,10 @@
-import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity } from 'react-native'
-import React, { useState, useEffect } from 'react'
-import { s, vs, ms } from 'react-native-size-matters'
-import BRAND from '../../../src/constant/color'
+import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { s, vs, ms } from 'react-native-size-matters';
+import BRAND from '../../../src/constant/color';
+import { useDispatch } from 'react-redux';
+import { postUserAddress, updateUserAddress } from '../../../store/slices/userSlice';
+import { Picker } from '@react-native-picker/picker';
 
 const EditAddress = ({ route, navigation }) => {
     const { addressData, onSave } = route.params || {};
@@ -12,27 +15,29 @@ const EditAddress = ({ route, navigation }) => {
         landmark: '',
         city: '',
         state: '',
-        pincode: ''
-    })
+        pincode: '',
+        country: 'India',
+        gali_no: '',
+        floor_no: '',
+    });
 
-    // Function to parse address string into different fields
+    const [errors, setErrors] = useState({});
+    const dispatch = useDispatch();
+
     const parseAddress = (addressString) => {
         if (!addressString) return {};
-        
+
         const lines = addressString.split('\n');
         let parsedData = {
             address: '',
             landmark: '',
             city: '',
             state: '',
-            pincode: ''
+            pincode: '',
         };
 
         if (lines.length > 0) {
-            // First line usually contains the main address
             parsedData.address = lines[0].trim();
-            
-            // Try to extract landmark from address (if present)
             const landmarkMatch = lines[0].match(/near\s+([^,]+)/i);
             if (landmarkMatch) {
                 parsedData.landmark = landmarkMatch[1].trim();
@@ -40,7 +45,6 @@ const EditAddress = ({ route, navigation }) => {
         }
 
         if (lines.length > 1) {
-            // Second line might contain area and city
             const secondLine = lines[1].trim();
             const cityMatch = secondLine.match(/([A-Za-z\s]+)(?: - \d+)?$/);
             if (cityMatch) {
@@ -49,16 +53,11 @@ const EditAddress = ({ route, navigation }) => {
         }
 
         if (lines.length > 2) {
-            // Third line might contain state and pincode
             const thirdLine = lines[2].trim();
-            
-            // Extract pincode (6-digit number)
             const pincodeMatch = thirdLine.match(/\b(\d{6})\b/);
             if (pincodeMatch) {
                 parsedData.pincode = pincodeMatch[1];
             }
-            
-            // Extract state (text before pincode)
             const stateMatch = thirdLine.match(/^([A-Za-z\s]+)(?:\s+-\s+\d+)?/);
             if (stateMatch) {
                 parsedData.state = stateMatch[1].trim();
@@ -66,41 +65,87 @@ const EditAddress = ({ route, navigation }) => {
         }
 
         return parsedData;
-    }
+    };
 
     useEffect(() => {
         if (addressData) {
             const parsedAddress = parseAddress(addressData.address);
-            
+
             setFormData({
-                title: addressData.title || '',
+                title: addressData.add_name || '',
                 address: parsedAddress.address || addressData.address || '',
-                landmark: parsedAddress.landmark || '',
-                city: parsedAddress.city || '',
-                state: parsedAddress.state || '',
-                pincode: parsedAddress.pincode || ''
+                landmark: parsedAddress.landmark || addressData.landmark || '',
+                city: parsedAddress.city || addressData.city || '',
+                state: parsedAddress.state || addressData.state || '',
+                pincode: parsedAddress.pincode || addressData.pincode || '',
+                country: 'India',
+                gali_no: addressData.gali_no || '',
+                floor_no: addressData.floor_no || '',
             });
         }
-    }, [addressData])
+    }, [addressData]);
 
     const handleInputChange = (field, value) => {
+        if (field === 'country') return;
         setFormData(prev => ({
             ...prev,
-            [field]: value
-        }))
-    }
+            [field]: value,
+        }));
+    };
 
-    const handleSave = () => {
-        console.log('Saved address:', formData)
-        
-        // Call the onSave callback if provided (for both edit and add new)
-        if (onSave) {
-            onSave(formData);
+    const validateFields = () => {
+        let tempErrors = {};
+        if (!formData.title.trim()) tempErrors.title = 'Address Title is required';
+        if (!formData.address.trim()) tempErrors.address = 'Address is required';
+        if (!formData.landmark.trim()) tempErrors.landmark = 'Landmark is required';
+        if (!formData.city.trim()) tempErrors.city = 'City is required';
+        if (!formData.state.trim()) tempErrors.state = 'State is required';
+        if (!formData.pincode.trim()) tempErrors.pincode = 'Pincode is required';
+        else if (!/^\d{6}$/.test(formData.pincode)) tempErrors.pincode = 'Pincode must be 6 digits';
+        if (!formData.gali_no.trim()) tempErrors.gali_no = 'Gali Number is required';
+        if (!formData.floor_no.trim()) tempErrors.floor_no = 'Floor Number is required';
+
+        setErrors(tempErrors);
+        return Object.keys(tempErrors).length === 0;
+    };
+
+    const handleSave = async () => {
+        if (validateFields()) {
+            let formattedAddress = {
+                add_name: formData.title,
+                floor_no: formData.floor_no,
+                gali_no: formData.gali_no,
+                landmark: formData.landmark,
+                address: formData.address,
+                pincode: formData.pincode,
+                state: formData.state,
+                city: formData.city,
+                country: formData.country,
+            };
+
+            try {
+                if (addressData && addressData.id) {
+                    // Update existing address
+                    formattedAddress.id = addressData.id; // Add ID for update
+                    const updatedAddress = await dispatch(
+                        updateUserAddress({ addressId: formattedAddress.id, addressData: formattedAddress })
+                    ).unwrap();
+
+                    console.log("Address updated successfully:", updatedAddress);
+                } else {
+                    // Save new address
+                    const result = await dispatch(postUserAddress(formattedAddress));
+                    if (result.type === 'user/postUserAddress/fulfilled') {
+                        navigation.goBack();
+                    }
+                }
+                if (onSave) onSave(formData);
+            } catch (e) {
+                console.error("Failed to save address:", e);
+                // Optionally show error alert
+            }
         }
-        
-        // Navigate back
-        navigation.goBack();
-    }
+    };
 
     return (
         <View style={styles.container}>
@@ -109,83 +154,62 @@ const EditAddress = ({ route, navigation }) => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                {/* Title Input */}
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Address Title</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="e.g., Home, Office"
-                        placeholderTextColor={BRAND.muted}
-                        value={formData.title}
-                        onChangeText={(text) => handleInputChange('title', text)}
-                    />
-                </View>
+                {[
+                    { label: 'Address Title', field: 'title', dropdown: true },
+                    { label: 'Address', field: 'address', multiline: true },
+                    { label: 'Landmark', field: 'landmark' },
+                    { label: 'City', field: 'city' },
+                    { label: 'State', field: 'state' },
+                    { label: 'Pincode', field: 'pincode', keyboardType: 'numeric', maxLength: 6 },
+                    { label: 'Gali Number', field: 'gali_no' },
+                    { label: 'Floor Number', field: 'floor_no' },
+                ].map(({ label, field, multiline, keyboardType, maxLength, dropdown }) => (
+                    <View key={field} style={styles.inputContainer}>
+                        <Text style={styles.label}>{label}</Text>
+                        {dropdown && field === 'title' ? (
+                            <View style={[styles.textInput, styles.pickerContainer]}>
+                                <Picker
+                                    selectedValue={formData.title}
+                                    onValueChange={(itemValue) => handleInputChange(field, itemValue)}
+                                    mode="dropdown"
+                                    style={styles.picker}
 
-                {/* Address Input */}
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Address</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="Enter full address"
-                        placeholderTextColor={BRAND.muted}
-                        value={formData.address}
-                        onChangeText={(text) => handleInputChange('address', text)}
-                        multiline
-                    />
-                </View>
+                                >
+                                        <Picker.Item label="Select Address Title" value=""  />
+                                        <Picker.Item label="Home" value="Home" />
+                                        <Picker.Item label="Office" value="Office" />
+                                        <Picker.Item label="Residence" value="Residence" />
+                                        <Picker.Item label="Friend House" value="Friend House" />
+                                </Picker>
+                            </View>
+                        ) : (
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder={`Enter ${label.toLowerCase()}`}
+                                placeholderTextColor={BRAND.muted}
+                                value={formData[field]}
+                                onChangeText={(text) => handleInputChange(field, text)}
+                                multiline={multiline}
+                                keyboardType={keyboardType}
+                                maxLength={maxLength}
+                            />
+                        )}
+                        {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+                    </View>
+                ))}
 
-                {/* Landmark Input */}
                 <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Landmark</Text>
+                    <Text style={styles.label}>Country</Text>
                     <TextInput
-                        style={styles.textInput}
-                        placeholder="Enter nearby landmark"
+                        style={[styles.textInput, { backgroundColor: '#f0f0f0' }]}
+                        placeholder="India"
                         placeholderTextColor={BRAND.muted}
-                        value={formData.landmark}
-                        onChangeText={(text) => handleInputChange('landmark', text)}
-                    />
-                </View>
-
-                {/* City Input */}
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>City</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="Enter city"
-                        placeholderTextColor={BRAND.muted}
-                        value={formData.city}
-                        onChangeText={(text) => handleInputChange('city', text)}
-                    />
-                </View>
-
-                {/* State Input */}
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>State</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="Enter state"
-                        placeholderTextColor={BRAND.muted}
-                        value={formData.state}
-                        onChangeText={(text) => handleInputChange('state', text)}
-                    />
-                </View>
-
-                {/* Pincode Input */}
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Pincode</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="Enter 6-digit pincode"
-                        placeholderTextColor={BRAND.muted}
-                        value={formData.pincode}
-                        onChangeText={(text) => handleInputChange('pincode', text)}
-                        keyboardType="numeric"
-                        maxLength={6}
+                        value={formData.country}
+                        editable={false}
                     />
                 </View>
             </ScrollView>
 
-            {/* Save Button - Fixed at bottom */}
             <View style={styles.bottomContainer}>
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                     <Text style={styles.saveButtonText}>
@@ -194,10 +218,10 @@ const EditAddress = ({ route, navigation }) => {
                 </TouchableOpacity>
             </View>
         </View>
-    )
-}
+    );
+};
 
-export default EditAddress
+export default EditAddress;
 
 const styles = StyleSheet.create({
     container: {
@@ -213,7 +237,7 @@ const styles = StyleSheet.create({
         paddingBottom: vs(80),
     },
     inputContainer: {
-        marginBottom: vs(12),
+        marginBottom: vs(10),
     },
     label: {
         fontSize: ms(14),
@@ -232,6 +256,25 @@ const styles = StyleSheet.create({
         color: BRAND.text,
         minHeight: vs(40),
     },
+    pickerContainer: {
+        paddingHorizontal: 0,
+        // paddingVertical:60,
+        justifyContent: 'center',
+        height: vs(40),
+        // backgroundColor:"red"
+    },
+    picker: {
+        color: BRAND.text,
+        fontSize: s(18),
+        height: vs(70),
+        width: '100%',
+        // backgroundColor:"red"
+    },
+    errorText: {
+        color: 'red',
+        marginTop: vs(4),
+        fontSize: ms(12),
+    },
     bottomContainer: {
         position: 'absolute',
         bottom: 0,
@@ -249,10 +292,7 @@ const styles = StyleSheet.create({
         borderRadius: s(10),
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
+        shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,
         shadowRadius: 2,
         elevation: 2,
@@ -262,4 +302,4 @@ const styles = StyleSheet.create({
         fontSize: ms(14),
         fontWeight: '600',
     },
-})
+});

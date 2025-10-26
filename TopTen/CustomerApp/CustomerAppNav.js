@@ -18,6 +18,7 @@ import OrderSummery from '../CustomerApp/ProfileScreens/OrderSummery';
 import OrderDetails from '../CustomerApp/ProfileScreens/OrderDetails';
 import OrderConfirem from '../CustomerApp/ProfileScreens/OrderConfirem';
 import Offers from '../CustomerApp/ProfileScreens/Offers';
+import Catlog from '../CustomerApp/Catlog';
 const Stack = createStackNavigator()
 
 const CustomerAppNav = () => {
@@ -76,7 +77,7 @@ const CustomerAppNav = () => {
             <Stack.Screen
                 name='EditAdrees'
                 component={EditAdrees}
-                options={({ navigation }) => getProfileHeaderOptions('Edit Address', navigation)}
+                options={({ navigation }) => getProfileHeaderOptions('Address', navigation)}
             />
             <Stack.Screen
                 name='CategoriesCatlog'
@@ -110,6 +111,10 @@ const CustomerAppNav = () => {
             <Stack.Screen name='OrderConfirem' component={OrderConfirem} options={{ headerShown: false }} />
             <Stack.Screen name='Offers' component={Offers}
                 options={({ navigation }) => getProfileHeaderOptions('Checkout', navigation)} />
+            <Stack.Screen name='Catlog' component={Catlog}
+                options={({ route,navigation }) => {
+                    const title = route?.params?.title || 'Catlog'
+                    return  getProfileHeaderOptions(title, navigation)} }/>
 
         </Stack.Navigator>
     )

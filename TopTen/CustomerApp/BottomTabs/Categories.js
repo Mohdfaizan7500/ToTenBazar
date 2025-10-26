@@ -3,10 +3,25 @@ import React from 'react'
 import BRAND from '../../../src/constant/color'
 import { s, vs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
+import { useSelector } from 'react-redux'
 
 const Categories = () => {
+  const ProductCategories = useSelector(state => state.user.categories);
+  // console.log("ProductCategories on categries screen:", ProductCategories)
 
   const navigation = useNavigation();
+  function capitalizeFirstLetter(word) {
+    if (!word) return '';
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+
+  function formatString(str) {
+    return str
+      .split(' ') // Split into words
+      .filter(word => word.trim() !== '') // Remove empty words
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Capitalize first letter
+      .join(' & \n'); // Join with " & \n"
+  }
 
   const categories = [
     {
@@ -81,24 +96,33 @@ const Categories = () => {
       <View style={styles.FlateListContainer}>
         <FlatList
           contentContainerStyle={styles.gridCategoriesContainer}
-          data={categories}
+          data={ProductCategories}
           numColumns={4}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item, index }) => (
             <TouchableOpacity
               style={styles.gridCategoryItem}
-              onPress={() => navigation.navigate('CategoriesCatlog', {
-                title: item.title.replace(/\n/g, ' ') // Remove newlines for header
-              })}
+              onPress={() =>{
+                console.log(item)
+                navigation.navigate('CategoriesCatlog', {
+                  title: item.category
+                    .replace(/\n/g, ' ') // remove new lines
+                    .split(' ') // split into words
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // capitalize first letter of each word
+                    .join(' & ') // join words with &
+                })
+              }}
+
+
             >
               <View style={styles.categoriesBox}>
                 <Image
-                  source={item.image}
+                  source={{ uri: item?.images[0]?.image_url }}
                   style={styles.categoryImage}
                   resizeMode='contain'
                 />
               </View>
-              <Text style={styles.gridCategoryTitle}>{item.title}</Text>
+              <Text style={styles.gridCategoryTitle}>{formatString(item.category)}</Text>
             </TouchableOpacity>
           )}
         />
@@ -131,14 +155,15 @@ const styles = StyleSheet.create({
     width: s(60),
     height: s(60),
     borderRadius: s(12),
-    backgroundColor: '#9DA49E0D',
+    backgroundColor: '#bdc5be57',
     alignItems: "center",
     justifyContent: "center",
     marginBottom: s(8)
   },
   categoryImage: {
     width: "80%",
-    height: "80%"
+    height: "80%",
+    // borderRadius:s(12)
   },
   gridCategoryTitle: {
     textAlign: "center",
