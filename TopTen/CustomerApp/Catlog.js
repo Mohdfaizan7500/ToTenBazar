@@ -5,195 +5,274 @@ import {
     FlatList,
     Image,
     TouchableOpacity,
-    Dimensions
+    Dimensions,
+    StatusBar,
+    ActivityIndicator,
+    Animated
 } from 'react-native'
-import React from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { s, vs, ms, mvs } from 'react-native-size-matters'
+import { useRoute } from '@react-navigation/native'
+import { useDispatch, useSelector } from 'react-redux'
+import { clearGroupProducts, fetchProductsByGroup } from '../../store/slices/userSlice'
+import BRAND from '../../src/constant/color'
+import { BASE_URL } from '../../config'
+
+// Shimmer Effect Component
+const ShimmerEffect = () => {
+    const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const animate = () => {
+            shimmerAnim.setValue(0);
+            Animated.timing(shimmerAnim, {
+                toValue: 1,
+                duration: 1000,
+                useNativeDriver: true,
+            }).start(() => animate());
+        };
+        animate();
+    }, []);
+
+    const translateX = shimmerAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-200, 200]
+    });
+
+    return (
+        <Animated.View
+            style={[
+                styles.shimmerOverlay,
+                {
+                    transform: [{ translateX }],
+                },
+            ]}
+        />
+    );
+};
+
+// Skeleton Loader Component with Shimmer
+const ProductCardSkeleton = () => (
+    <View style={styles.skeletonCard}>
+        <View style={styles.skeletonImage}>
+            <ShimmerEffect />
+        </View>
+        <View style={styles.skeletonContent}>
+            <View style={styles.skeletonTitle}>
+                <ShimmerEffect />
+            </View>
+            <View style={styles.skeletonSubtitle}>
+                <ShimmerEffect />
+            </View>
+            <View style={styles.skeletonRating}>
+                <ShimmerEffect />
+            </View>
+            <View style={styles.skeletonPrice}>
+                <ShimmerEffect />
+            </View>
+            <View style={styles.skeletonButton}>
+                <ShimmerEffect />
+            </View>
+        </View>
+    </View>
+);
 
 const Catlog = () => {
-    // Sample product data (you can replace with your actual data)
-    const products = [
-        {
-            id: '1',
-            name: 'Samsung Galaxy S23 Ultra',
-            price: '₹94,999',
-            originalPrice: '₹1,04,999',
-            discount: '10% off',
-            rating: '4.5',
-            reviews: '12,345',
-            image: 'https://images.samsung.com/is/image/samsung/p6pim/in/2302/gallery/in-galaxy-s23-s918-sm-s918bzkdins-thumb-534866512',
-            isFavorite: false,
-            delivery: 'Free delivery',
-            exchange: 'Exchange available'
-        },
-        {
-            id: '2',
-            name: 'Apple iPhone 15 Pro Max',
-            price: '₹1,39,900',
-            originalPrice: '₹1,59,900',
-            discount: '13% off',
-            rating: '4.7',
-            reviews: '8,765',
-            image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=webp',
-            isFavorite: true,
-            delivery: 'Free delivery',
-            exchange: 'No cost EMI'
-        },
-        {
-            id: '3',
-            name: 'OnePlus 11 5G',
-            price: '₹56,999',
-            originalPrice: '₹61,999',
-            discount: '8% off',
-            rating: '4.3',
-            reviews: '9,876',
-            image: 'https://image01.oneplus.net/ebp/202301/17/1-m00-3d-17-cpgm7wo1w_oaq8zhaajj3y8xr8w817.png',
-            isFavorite: false,
-            delivery: 'Free delivery',
-            exchange: 'Exchange available'
-        },
-        {
-            id: '4',
-            name: 'Google Pixel 8 Pro',
-            price: '₹1,06,999',
-            originalPrice: '₹1,19,999',
-            discount: '11% off',
-            rating: '4.4',
-            reviews: '5,432',
-            image: 'https://storage.googleapis.com/gweb-uniblog-publish-prod/original_images/pixel_8_pro_obsidian_1.jpg',
-            isFavorite: true,
-            delivery: 'Free delivery',
-            exchange: 'No cost EMI'
-        },
-        {
-            id: '5',
-            name: 'Xiaomi 13 Pro',
-            price: '₹79,999',
-            originalPrice: '₹89,999',
-            discount: '11% off',
-            rating: '4.2',
-            reviews: '7,654',
-            image: 'https://i02.appmifile.com/938_operator_in/07/06/2023/2d5a8e9c2c2c0c4d9e6a8e6a8e6a8e6a8.png',
-            isFavorite: false,
-            delivery: 'Free delivery',
-            exchange: 'Exchange available'
-        },
-        {
-            id: '6',
-            name: 'Nothing Phone 2',
-            price: '₹44,999',
-            originalPrice: '₹49,999',
-            discount: '10% off',
-            rating: '4.1',
-            reviews: '6,543',
-            image: 'https://cdn.shopify.com/s/files/1/0586/8024/7537/products/NothingPhone2_White_front_back_1_1000x.png?v=1687862241',
-            isFavorite: false,
-            delivery: 'Free delivery',
-            exchange: 'No cost EMI'
-        },
-        {
-            id: '7',
-            name: 'Realme GT 2 Pro',
-            price: '₹39,999',
-            originalPrice: '₹49,999',
-            discount: '20% off',
-            rating: '4.0',
-            reviews: '4,321',
-            image: 'https://image01.realme.net/general/20220104/1641288949999.png',
-            isFavorite: true,
-            delivery: 'Free delivery',
-            exchange: 'Exchange available'
-        },
-        {
-            id: '8',
-            name: 'Vivo X90 Pro',
-            price: '₹84,999',
-            originalPrice: '₹94,999',
-            discount: '11% off',
-            rating: '4.3',
-            reviews: '3,210',
-            image: 'https://www.vivo.com/in/vivo%20x90%20pro-img.png',
-            isFavorite: false,
-            delivery: 'Free delivery',
-            exchange: 'No cost EMI'
+    const accessToken = useSelector(state => state?.auth?.accessToken)
+    const route = useRoute();
+    const groupName = route?.params?.title
+    const dispatch = useDispatch()
+
+    const [products, setProducts] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+
+    const fetchData = async () => {
+        if (groupName?.length > 0) {
+            console.log('groupName:', groupName)
+            const page = 1;
+            const length = 10;
+            try {
+                setLoading(true)
+                setError(null)
+
+                const response = await fetch(`${BASE_URL}/prod/get_group/products?group_name=${groupName}&page=${page}&length=${length}`, {
+                    method: "GET",
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                console.log("response status:", response.status)
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to fetch products by group")
+                }
+
+                const data = await response.json();
+                console.log(`Products for group ${groupName}:`, data);
+
+                // Set the products from API response
+                if (data.data && Array.isArray(data.data)) {
+                    setProducts(data.data)
+                } else {
+                    setProducts([])
+                }
+            }
+            catch (e) {
+                console.log('error:', e)
+                setError(e.message)
+            }
+            finally {
+                setLoading(false)
+            }
         }
-    ];
+    }
 
-    // Render each product item
-    const renderProductItem = ({ item }) => (
-        <TouchableOpacity style={styles.productCard}>
-            {/* Product Image */}
-            <View style={styles.imageContainer}>
-                <Image
-                    source={{ uri: item.image }}
-                    style={styles.productImage}
-                    resizeMode="contain"
-                />
-                <TouchableOpacity style={[
-                    styles.favoriteButton,
-                    item.isFavorite && styles.favoriteButtonActive
-                ]}>
-                    <Text style={[
-                        styles.favoriteIcon,
-                        item.isFavorite && styles.favoriteIconActive
-                    ]}>
-                        {item.isFavorite ? '♥' : '♡'}
-                    </Text>
-                </TouchableOpacity>
+    useEffect(() => {
+        fetchData()
+    }, [groupName])
 
-                {/* Discount Badge */}
-                <View style={styles.discountBadge}>
-                    <Text style={styles.discountText}>{item.discount}</Text>
-                </View>
-            </View>
+    // Format price to Indian Rupees
+    const formatPrice = (price) => {
+        if (!price) return '₹0';
+        return `₹${parseInt(price).toLocaleString('en-IN')}`;
+    }
 
-            {/* Product Details */}
-            <View style={styles.productDetails}>
-                <Text style={styles.productName} numberOfLines={2}>
-                    {item.name}
-                </Text>
+    // Calculate discount percentage
+    const calculateDiscount = (originalPrice, sellingPrice) => {
+        if (!originalPrice || !sellingPrice) return '0% off';
+        const discount = ((originalPrice - sellingPrice) / originalPrice) * 100;
+        return `${Math.round(discount)}% off`;
+    }
 
-                {/* Rating */}
-                <View style={styles.ratingContainer}>
-                    <View style={styles.ratingBox}>
-                        <Text style={styles.ratingText}>{item.rating} ★</Text>
-                    </View>
-                    <Text style={styles.reviewsText}>({item.reviews})</Text>
-                </View>
-
-                {/* Price */}
-                <View style={styles.priceContainer}>
-                    <Text style={styles.currentPrice}>{item.price}</Text>
-                    <Text style={styles.originalPrice}>{item.originalPrice}</Text>
-                </View>
-
-                {/* Delivery & Exchange */}
-                <View style={styles.extraInfo}>
-                    <Text style={styles.deliveryText}>{item.delivery}</Text>
-                    <Text style={styles.exchangeText}>{item.exchange}</Text>
-                </View>
-
-                {/* Add to Cart Button */}
-                <TouchableOpacity style={styles.addToCartButton}>
-                    <Text style={styles.addToCartText}>ADD TO CART</Text>
-                </TouchableOpacity>
-            </View>
-        </TouchableOpacity>
+    // Render skeleton loader with shimmer
+    const renderSkeletonItem = () => (
+        <ProductCardSkeleton />
     );
+
+    // Render each product item with API data
+    const renderProductItem = ({ item }) => {
+        // Use the first image from product_image array
+        const productImage = item.product_image?.[0]?.image_url;
+
+        return (
+            <TouchableOpacity style={styles.productCard}>
+                {/* Product Image */}
+                <View style={styles.imageContainer}>
+                    <Image
+                        source={{ uri: productImage }}
+                        style={styles.productImage}
+                        resizeMode='cover'
+                        defaultSource={require('../../src/images/user.png')}
+                    />
+
+                    {/* Discount Badge */}
+                    {item.discount_percentage && (
+                        <View style={styles.discountBadge}>
+                            <Text style={styles.discountText}>
+                                {calculateDiscount(item.product_original_price, item.product_selling_price)}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Product Details */}
+                <View style={styles.productDetails}>
+                    <Text style={styles.productName} numberOfLines={2}>
+                        {item.product_name}
+                    </Text>
+
+                    {/* Product Unit */}
+                    {item.product_unit && (
+                        <Text style={styles.productUnit} numberOfLines={1}>
+                            {item.product_unit}
+                        </Text>
+                    )}
+
+                    {/* Rating */}
+                    <View style={styles.ratingContainer}>
+                        <View style={styles.ratingBox}>
+                            <Text style={styles.ratingText}>4.0 ★</Text>
+                        </View>
+                        <Text style={styles.reviewsText}>(1k)</Text>
+                    </View>
+
+                    {/* Price */}
+                    <View style={styles.priceContainer}>
+                        <Text style={styles.currentPrice}>
+                            {formatPrice(item.product_selling_price)}
+                        </Text>
+                        {item.product_original_price && item.product_original_price > item.product_selling_price && (
+                            <Text style={styles.originalPrice}>
+                                {formatPrice(item.product_original_price)}
+                            </Text>
+                        )}
+                    </View>
+
+                    {/* Delivery & Exchange */}
+                    <View style={styles.extraInfo}>
+                        <Text style={styles.deliveryText}>Free delivery</Text>
+                        <Text style={styles.exchangeText}>Exchange available</Text>
+                    </View>
+
+                    {/* Add to Cart Button */}
+                    <TouchableOpacity style={styles.addToCartButton}>
+                        <Text style={styles.addToCartText}>ADD TO CART</Text>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        )
+    };
+
+    // Skeleton data for loading state
+    const skeletonData = Array.from({ length: 6 }, (_, index) => ({ id: index }));
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Products Grid */}
-            <FlatList
-                data={products}
-                renderItem={renderProductItem}
-                keyExtractor={(item) => item.id}
-                numColumns={2}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.flatListContent}
-                columnWrapperStyle={styles.columnWrapper}
-            />
+            <StatusBar backgroundColor={BRAND.white} />
+
+            {/* Products Grid with Shimmer Skeleton Loader */}
+            {loading ? (
+                <FlatList
+                    data={skeletonData}
+                    renderItem={renderSkeletonItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    numColumns={2}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.flatListContent}
+                    columnWrapperStyle={styles.columnWrapper}
+                />
+            ) : error ? (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>Error: {error}</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : products.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No products found</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <FlatList
+                    data={products}
+                    renderItem={renderProductItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    numColumns={2}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.flatListContent}
+                    columnWrapperStyle={styles.columnWrapper}
+                    refreshing={loading}
+                    onRefresh={fetchData}
+                />
+            )}
         </SafeAreaView>
     )
 }
@@ -211,6 +290,7 @@ const styles = StyleSheet.create({
     },
     flatListContent: {
         padding: CARD_MARGIN,
+        paddingBottom: s(20)
     },
     columnWrapper: {
         justifyContent: 'space-between',
@@ -219,7 +299,6 @@ const styles = StyleSheet.create({
         width: CARD_WIDTH,
         backgroundColor: '#fff',
         borderRadius: s(8),
-        // margin: CARD_MARGIN,
         marginBottom: s(10),
         shadowColor: '#000',
         shadowOffset: {
@@ -235,32 +314,10 @@ const styles = StyleSheet.create({
         position: 'relative',
         height: vs(150),
         backgroundColor: '#f8f8f8',
-        padding: s(12),
     },
     productImage: {
         width: '100%',
         height: '100%',
-    },
-    favoriteButton: {
-        position: 'absolute',
-        top: s(8),
-        right: s(8),
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        width: s(28),
-        height: s(28),
-        borderRadius: s(14),
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    favoriteButtonActive: {
-        backgroundColor: '#ff3f6c',
-    },
-    favoriteIcon: {
-        fontSize: s(16),
-        color: '#757575',
-    },
-    favoriteIconActive: {
-        color: '#fff',
     },
     discountBadge: {
         position: 'absolute',
@@ -283,9 +340,14 @@ const styles = StyleSheet.create({
         fontSize: s(14),
         fontWeight: '500',
         color: '#000',
-        marginBottom: s(6),
+        marginBottom: s(4),
         lineHeight: s(18),
         height: s(36),
+    },
+    productUnit: {
+        fontSize: s(12),
+        color: BRAND.muted,
+        marginBottom: s(6),
     },
     ratingContainer: {
         flexDirection: 'row',
@@ -314,13 +376,13 @@ const styles = StyleSheet.create({
         marginBottom: s(6),
     },
     currentPrice: {
-        fontSize: s(16),
+        fontSize: s(12),
         fontWeight: 'bold',
         color: '#000',
         marginRight: s(6),
     },
     originalPrice: {
-        fontSize: s(12),
+        fontSize: s(10),
         color: '#757575',
         textDecorationLine: 'line-through',
     },
@@ -345,6 +407,118 @@ const styles = StyleSheet.create({
     addToCartText: {
         color: '#fff',
         fontSize: s(12),
+        fontWeight: 'bold',
+    },
+
+    // Skeleton Loader Styles with Shimmer
+    skeletonCard: {
+        width: CARD_WIDTH,
+        backgroundColor: '#e0e0e0',
+        borderRadius: s(8),
+        marginBottom: s(10),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: s(2) },
+        shadowOpacity: 0.1,
+        shadowRadius: s(3),
+        elevation: 3,
+        overflow: 'hidden',
+    },
+    skeletonImage: {
+        width: '100%',
+        height: vs(150),
+        backgroundColor: '#c0c0c0',
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    skeletonContent: {
+        padding: s(12),
+    },
+    skeletonTitle: {
+        height: s(16),
+        backgroundColor: '#c0c0c0',
+        borderRadius: s(4),
+        marginBottom: s(8),
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    skeletonSubtitle: {
+        height: s(12),
+        backgroundColor: '#c0c0c0',
+        borderRadius: s(4),
+        marginBottom: s(8),
+        width: '60%',
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    skeletonRating: {
+        height: s(20),
+        backgroundColor: '#c0c0c0',
+        borderRadius: s(4),
+        marginBottom: s(8),
+        width: '40%',
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    skeletonPrice: {
+        height: s(14),
+        backgroundColor: '#c0c0c0',
+        borderRadius: s(4),
+        marginBottom: s(12),
+        width: '50%',
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    skeletonButton: {
+        height: s(32),
+        backgroundColor: '#c0c0c0',
+        borderRadius: s(4),
+        overflow: 'hidden',
+        position: 'relative',
+    },
+
+    // Shimmer Effect Styles
+    shimmerOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+        transform: [{ skewX: '-20deg' }],
+    },
+
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: s(20),
+    },
+    errorText: {
+        fontSize: s(14),
+        color: BRAND.error,
+        textAlign: 'center',
+        marginBottom: s(20),
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: s(20),
+    },
+    emptyText: {
+        fontSize: s(16),
+        color: BRAND.muted,
+        marginBottom: s(20),
+    },
+    retryButton: {
+        backgroundColor: BRAND.primary,
+        paddingHorizontal: s(20),
+        paddingVertical: s(10),
+        borderRadius: s(6),
+    },
+    retryButtonText: {
+        color: BRAND.white,
+        fontSize: s(14),
         fontWeight: 'bold',
     },
 })

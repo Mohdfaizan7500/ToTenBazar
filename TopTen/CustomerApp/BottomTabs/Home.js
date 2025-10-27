@@ -1,18 +1,35 @@
-import { Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Animated, Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import BRAND from '../../../src/constant/color'
 import { BagIcon, BellIcon, DownArrowIcon, FavoriteIcon, LocationIcon, SearchIcon } from '../../../src/SVGicons/icon'
 import { s, vs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
 import { useSelector } from 'react-redux'
+import LinearGradient from 'react-native-linear-gradient'
 
 const Home = () => {
   // Refs and state
   const flatListRef = useRef(null)
+  const mainFlatListRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [visibleSections, setVisibleSections] = useState(new Set(['banner', 'categories']))
   const navigation = useNavigation()
 
-  // Redux selectors - moved to individual selectors to prevent unnecessary re-renders
+  // Header animation values
+  const scrollY = useRef(new Animated.Value(0)).current
+  const headerTranslateY = useRef(new Animated.Value(0)).current
+  const lastScrollY = useRef(0)
+  const isAnimating = useRef(false)
+
+  // Lazy loading thresholds
+  const LAZY_LOAD_THRESHOLD = 2
+  const ITEM_HEIGHT_ESTIMATE = 200
+
+  // Header animation constants
+  const HEADER_HEIGHT = vs(160)
+  const SCROLL_THRESHOLD = 30
+
+  // Redux selectors
   const Banner_Config = useSelector(state => state.user.Baner_Config)
   const ProductCategories = useSelector(state => state.user.categories)
   const allGroups = useSelector(state => state.user.allGroups)
@@ -35,8 +52,8 @@ const Home = () => {
       .slice(0, 8);
   }, [ProductCategories])
 
-  // Static data - moved outside component or made stable with empty dependencies
-  const categoriesitem = [
+  // Static data
+  const categoriesitem = useMemo(() => [
     {
       title: 'cafe',
       image: require('../../../src/images/cafe.png')
@@ -53,9 +70,9 @@ const Home = () => {
       title: 'Mobiles',
       image: require('../../../src/images/mobiles.png')
     }
-  ]
+  ], [])
 
-  const BestDeal = [
+  const BestDeal = useMemo(() => [
     {
       title: "Surf Excel Easy Wash Detergent Powder",
       image: require('../../../src/images/surf.png'),
@@ -63,42 +80,70 @@ const Home = () => {
       price: 12,
       mrp: 14
     },
-    {
-      title: "Fortune Arhar Dal (Toor Dal)",
-      image: require('../../../src/images/fortne.png'),
-      weight: "340 ml",
-      price: 18,
-      mrp: 22
-    },
-    {
-      title: "Maggi Noodles Masala",
-      image: require('../../../src/images/cocacola.png'),
-      weight: "70 g",
-      price: 8,
-      mrp: 10
-    },
-    {
-      title: "Lay's Classic Potato Chips",
-      image: require('../../../src/images/cocacola.png'),
-      weight: "50 g",
-      price: 15,
-      mrp: 20
-    },
-    {
-      title: "Colgate Strong Teeth Toothpaste",
-      image: require('../../../src/images/cocacola.png'),
-      weight: "100 g",
-      price: 6,
-      mrp: 8
-    },
-    {
-      title: "Amul Butter",
-      image: require('../../../src/images/cocacola.png'),
-      weight: "100 g",
-      price: 25,
-      mrp: 30
+    // ... rest of BestDeal items
+  ], [])
+
+  // Smoother header animation handler
+  const handleHeaderAnimation = useCallback((currentOffset) => {
+    const currentScrollY = currentOffset;
+    const deltaY = currentScrollY - lastScrollY.current;
+
+    if (isAnimating.current) return;
+
+    if (deltaY > 5 && currentScrollY > SCROLL_THRESHOLD) {
+      isAnimating.current = true;
+      Animated.spring(headerTranslateY, {
+        toValue: -HEADER_HEIGHT,
+        tension: 50,
+        friction: 12,
+        useNativeDriver: true,
+      }).start(() => {
+        isAnimating.current = false;
+      });
+    } else if (deltaY < -5) {
+      isAnimating.current = true;
+      Animated.spring(headerTranslateY, {
+        toValue: 0,
+        tension: 50,
+        friction: 12,
+        useNativeDriver: true,
+      }).start(() => {
+        isAnimating.current = false;
+      });
     }
-  ]
+
+    lastScrollY.current = currentScrollY;
+  }, [HEADER_HEIGHT]);
+
+  // Combined scroll handler for lazy loading and header animation
+  const handleMainScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: false,
+      listener: (event) => {
+        const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+        const scrollPosition = contentOffset.y;
+        const screenHeight = layoutMeasurement.height;
+
+        // Handle header animation
+        handleHeaderAnimation(scrollPosition);
+
+        // Existing lazy loading logic
+        const newVisibleSections = new Set(['banner', 'categories']);
+
+        if (allgroupnames) {
+          allgroupnames.forEach((groupName, index) => {
+            const sectionPosition = (index * ITEM_HEIGHT_ESTIMATE) + 600;
+            if (sectionPosition <= scrollPosition + (screenHeight * LAZY_LOAD_THRESHOLD)) {
+              newVisibleSections.add(`group-${index}`);
+            }
+          });
+        }
+
+        setVisibleSections(newVisibleSections);
+      }
+    }
+  );
 
   // Auto scroll logic
   useEffect(() => {
@@ -121,7 +166,7 @@ const Home = () => {
     }
   }, [slicedBannerConfig.length]);
 
-  // Event handlers
+  // Event handlers (keep the same as before)
   const handleScrollEnd = useCallback((event) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x
     const cardWidth = Dimensions.get('window').width - 50 + s(30)
@@ -152,12 +197,17 @@ const Home = () => {
       .join(' & \n');
   }, [])
 
-  // Render functions with stable dependencies
+  // Render functions (keep the same as before)
   const renderBannerItem = useCallback(({ item, index }) => (
-    <View style={[
-      styles.card,
-      index === currentIndex && styles.activeCard
-    ]}>
+    <LinearGradient
+      colors={['red', 'blue']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={[
+        styles.card,
+        index === currentIndex && styles.activeCard
+      ]}>
+
       <View style={styles.cardContent}>
         <Text style={styles.cardText}>{item?.banner_name}</Text>
         <TouchableOpacity style={styles.ShopNowButton}>
@@ -169,7 +219,7 @@ const Home = () => {
         style={styles.imageSize}
         resizeMode='cover'
       />
-    </View>
+    </LinearGradient>
   ), [currentIndex])
 
   const renderPagerItem = useCallback(({ item, index }) => (
@@ -209,9 +259,7 @@ const Home = () => {
     </TouchableOpacity>
   ), [handleCategoryPress, formatString])
 
-  // Updated renderProductItem with stable dependencies
   const renderProductItem = useCallback(({ item, index }) => {
-    // Check if item is from API (has images array) or static data
     const isApiData = item?.product_image && Array.isArray(item.product_image);
 
     return (
@@ -250,11 +298,19 @@ const Home = () => {
     );
   }, [])
 
-  // Memoized group sections to prevent unnecessary re-renders
+  // Optimized group sections with lazy loading
   const groupSections = useMemo(() => {
     if (!allgroupnames) return null;
 
     return allgroupnames.map((groupName, index) => {
+      if (!visibleSections.has(`group-${index}`)) {
+        return (
+          <View key={`${groupName}-${index}`} style={[styles.lazyPlaceholder, { height: ITEM_HEIGHT_ESTIMATE }]}>
+            <ActivityIndicator size={'small'} color={BRAND.primary} />
+          </View>
+        );
+      }
+
       const groupData = groupProducts?.[groupName]?.[1]?.data;
       const displayData = groupData && groupData.length > 0 ? groupData : BestDeal;
 
@@ -276,6 +332,10 @@ const Home = () => {
               keyExtractor={(item, itemIndex) => `${groupName}-${itemIndex}`}
               renderItem={renderProductItem}
               showsHorizontalScrollIndicator={false}
+              initialNumToRender={3}
+              maxToRenderPerBatch={5}
+              windowSize={2}
+              removeClippedSubviews={true}
             />
           ) : (
             <Text style={styles.noProductsText}>No products available</Text>
@@ -283,13 +343,13 @@ const Home = () => {
         </View>
       );
     });
-  }, [allgroupnames, groupProducts, navigation, renderProductItem]);
+  }, [allgroupnames, groupProducts, navigation, renderProductItem, visibleSections]);
 
-  // Main content component - memoized to prevent unnecessary re-renders
+  // Main content component with lazy loading
   const MainContent = useMemo(() => {
     return (
       <View style={styles.scrollingCardView}>
-        {/* Banner Carousel */}
+        {/* Banner Carousel - Always visible */}
         {slicedBannerConfig.length > 0 && (
           <>
             <FlatList
@@ -308,6 +368,9 @@ const Home = () => {
                 offset: (Dimensions.get('window').width - 50 + s(30)) * index,
                 index,
               })}
+              initialNumToRender={3}
+              maxToRenderPerBatch={3}
+              windowSize={3}
             />
 
             {/* Pager Indicators */}
@@ -321,7 +384,7 @@ const Home = () => {
           </>
         )}
 
-        {/* Horizontal Categories */}
+        {/* Horizontal Categories - Always visible */}
         <FlatList
           contentContainerStyle={styles.categoriesContainerFlatlist}
           data={categoriesitem}
@@ -329,26 +392,33 @@ const Home = () => {
           keyExtractor={(item, index) => index.toString()}
           renderItem={renderHorizontalCategoryItem}
           scrollEnabled={false}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
         />
 
-        {/* Shop By Category Header */}
+        {/* Shop By Category Header - Always visible */}
         <View style={styles.HeadingContainer}>
           <Text style={styles.HeadingText}>Shop By Category</Text>
           <Text style={styles.SeeAllText} onPress={() => navigation.navigate('Categories')}>See All</Text>
         </View>
 
-        {/* Grid Categories */}
-        <View style={{ backgroundColor: BRAND.bg, marginBottom: s(15) }}>
-          <FlatList
-            contentContainerStyle={styles.gridCategoriesContainer}
-            data={randomCategories}
-            numColumns={4}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={renderGridCategoryItem}
-          />
-        </View>
+        {/* Grid Categories - Always visible */}
+        {visibleSections.has('categories') && (
+          <View style={{ backgroundColor: BRAND.bg, marginBottom: s(15) }}>
+            <FlatList
+              contentContainerStyle={styles.gridCategoriesContainer}
+              data={randomCategories}
+              numColumns={4}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={renderGridCategoryItem}
+              initialNumToRender={8}
+              maxToRenderPerBatch={8}
+              removeClippedSubviews={true}
+            />
+          </View>
+        )}
 
-        {/* Dynamic Group Sections */}
+        {/* Dynamic Group Sections with Lazy Loading */}
         {groupSections}
 
         {/* Loading State */}
@@ -378,57 +448,90 @@ const Home = () => {
     renderGridCategoryItem,
     handleScrollEnd,
     handleScrollBegin,
-    navigation
+    navigation,
+    visibleSections
   ]);
+
+  // Header Component - FIXED: Removed high zIndex and absolute positioning
+  const Header = useMemo(() => (
+    <Animated.View
+      style={[
+        styles.headerContainer,
+        {
+          transform: [{ translateY: headerTranslateY }],
+          height: HEADER_HEIGHT,
+        }
+      ]}
+    >
+      {/* Background Container */}
+      <View style={styles.bgContainer} />
+
+      {/* Header Content */}
+      <View style={styles.headerContent}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.locationContainer} onPress={() => navigation.navigate('Address')}>
+            <View style={styles.iconCircle}>
+              <LocationIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+            </View>
+            <View>
+              <View style={styles.addressHeader}>
+                <Text style={styles.homeText}>Home</Text>
+                <DownArrowIcon width={s(22)} height={s(22)} stroke={BRAND.white} />
+              </View>
+              <Text style={styles.address}>Karol Bagh, New Delhi</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.iconsContainer}>
+            <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notification')}>
+              <BellIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('MyCart')}>
+              <BagIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <SearchIcon width={s(22)} height={s(22)} stroke={BRAND.muted} />
+          <TextInput
+            placeholder='Search'
+            placeholderTextColor={BRAND.muted}
+            style={styles.searchinput}
+          />
+        </View>
+      </View>
+    </Animated.View>
+  ), [navigation, headerTranslateY, HEADER_HEIGHT]);
 
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={BRAND.primary} barStyle="dark-content" />
 
-      <View style={styles.bgContainer}></View>
+      {/* Header - Now part of normal flow with negative margin */}
+      {Header}
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.locationContainer} onPress={() => navigation.navigate('Address')}>
-          <View style={styles.iconCircle}>
-            <LocationIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
-          </View>
-          <View>
-            <View style={styles.addressHeader}>
-              <Text style={styles.homeText}>Home</Text>
-              <DownArrowIcon width={s(22)} height={s(22)} stroke={BRAND.white} />
-            </View>
-            <Text style={styles.address}>Karol Bagh, New Delhi</Text>
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.iconsContainer}>
-          <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notification')}>
-            <BellIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('MyCart')}>
-            <BagIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <SearchIcon width={s(22)} height={s(22)} stroke={BRAND.muted} />
-        <TextInput
-          placeholder='Search'
-          placeholderTextColor={BRAND.muted}
-          style={styles.searchinput}
-        />
-      </View>
-
-      {/* Main Content */}
+      {/* Main Content with Lazy Loading */}
       <FlatList
+        ref={mainFlatListRef}
         style={styles.mainFlatList}
-        data={[1]} // Dummy data for single item
+        data={[1]}
         keyExtractor={(item, index) => index.toString()}
         renderItem={() => MainContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleMainScroll}
+        scrollEventThrottle={8}
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
+        windowSize={3}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
+        contentContainerStyle={styles.flatListContent}
+        decelerationRate="normal"
+        // Add negative margin to pull content behind header
+        contentInset={{ top: HEADER_HEIGHT }}
+        contentOffset={{ y: -HEADER_HEIGHT }}
       />
     </View>
   )
@@ -436,14 +539,34 @@ const Home = () => {
 
 export default Home
 
-// Styles remain the same...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BRAND.bg
   },
+  headerContainer: {
+    // REMOVED: position: 'absolute', top: 0, left: 0, right: 0
+    // Now it's part of normal flow but animated
+    width: '100%',
+    borderBottomRightRadius: s(50),
+    borderBottomLeftRadius: s(50),
+    overflow: 'hidden',
+    // Lower zIndex so content can scroll behind
+    zIndex: 10,
+    elevation: 5,
+  },
+  headerContent: {
+    width: '100%',
+  },
   mainFlatList: {
     flex: 1,
+    // Pull the FlatList up to overlap with header
+    marginTop: -vs(160), // This should match HEADER_HEIGHT
+  },
+  flatListContent: {
+    // Add padding to start content below header
+    paddingTop: vs(160), // This should match HEADER_HEIGHT
+    paddingBottom: vs(10),
   },
   bgContainer: {
     width: "100%",
@@ -452,6 +575,10 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: vs(60),
     backgroundColor: BRAND.primary,
     position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
   header: {
     width: "100%",
@@ -496,6 +623,7 @@ const styles = StyleSheet.create({
     borderRadius: s(100),
     alignSelf: "center",
     marginTop: vs(10),
+    marginBottom: vs(10),
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: s(20),
@@ -523,9 +651,10 @@ const styles = StyleSheet.create({
   },
   scrollingCardView: {
     width: "100%",
-    paddingBottom: vs(10),
     alignItems: "center",
-    marginTop: vs(15),
+    top:s(-30),
+    // zIndex:100,
+    // position:"absolute"
   },
   card: {
     width: Dimensions.get('window').width - s(40),
@@ -542,7 +671,7 @@ const styles = StyleSheet.create({
   },
   activeCard: {
     opacity: 1,
-    backgroundColor: BRAND.white,
+    backgroundColor: BRAND.pink,
     flexDirection: "row"
   },
   cardContent: {
@@ -553,12 +682,15 @@ const styles = StyleSheet.create({
     paddingLeft: s(10),
   },
   cardText: {
-    color: BRAND.text,
+    color: BRAND.white,
     fontSize: s(16),
     fontWeight: '800',
   },
   flatListCard: {
     paddingVertical: vs(5),
+    // paddingTop:s(-100),
+    // position:"absolute"
+
   },
   pager: {
     width: s(8),
@@ -759,5 +891,12 @@ const styles = StyleSheet.create({
     color: BRAND.muted,
     fontSize: s(14),
     padding: s(20)
+  },
+  lazyPlaceholder: {
+    width: "100%",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: BRAND.bg,
+    marginBottom: 10,
   }
 })
