@@ -42,7 +42,9 @@ export const DARK = { // Fixed: Changed 'Dark' to 'DARK' (conventional naming)
   yellow: "#FBBF24",
   pink: '#f59ac9',
   sky: '#6bd4ff',
-  bg: "#0F172A", // Dark background
+  bg: "#0F172A",
+  // bg: "#000000ff", // Dark background
+   // Dark background
   text: "#F1F5F9", // Light text for dark mode
   muted: "#94A3B8",
   white: "#1E293B", // Dark surface

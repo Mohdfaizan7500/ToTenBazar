@@ -1,16 +1,18 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Modal, StatusBar } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { s, vs, ms } from 'react-native-size-matters';
-import BRAND from '../../../src/constant/color';
+// import BRAND from '../../../src/constant/color';
 import { AddressIcon, CrossIcon, ThreeDotIcon } from '../../../src/SVGicons/icon';
-import { useNavigation } from '@react-navigation/native';
+import { DarkTheme, useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { deleteUserAddress, fetchUserAddress } from '../../../store/slices/userSlice';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DARK ,BRAND} from '../../../src/constant/colors';
 
 const Address = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState(null);
+    const Theme = useSelector(state=>state?.auth?.Theme)
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const navigation = useNavigation();
     const dispatch = useDispatch();
@@ -76,33 +78,35 @@ const Address = () => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <StatusBar backgroundColor={Theme ? DARK.bg : BRAND.bg} barStyle={Theme ? 'light-content' : "dark-content"} />
+
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent,Theme && {backgroundColor:DARK.bg}]}
             >
                 {userAddresses.length === 0 ? (
                     <Text style={styles.noAddressText}>No addresses available.</Text>
                 ) : (
                     userAddresses.map((address) => (
-                        <View key={address.id} style={styles.addressCard}>
+                        <View key={address.id} style={[styles.addressCard,Theme && {backgroundColor :DARK.gray[100], borderColor:DARK.border}]}>
                             <TouchableOpacity
                                 style={styles.ThreeDoteView}
                                 onPress={() => handleThreeDotPress(address)}
                             >
-                                <ThreeDotIcon />
+                                <ThreeDotIcon stroke ={Theme ? DARK.muted: BRAND.text} />
                             </TouchableOpacity>
                             <View style={styles.IconContaner}>
                                 <AddressIcon width={s(30)} height={s(30)} />
                             </View>
                             <View style={styles.addressDetails}>
-                                <Text style={styles.addressTitle}>{address.add_name}</Text>
-                                <Text style={styles.addressText}>{address.address}</Text>
-                                <Text style={styles.addressText}>{address.city}, {address.state}</Text>
-                                <Text style={styles.addressText}>Floor: {address.floor_no}, Gali: {address.gali_no}</Text>
-                                <Text style={styles.addressText}>Landmark: {address.landmark}</Text>
-                                <Text style={styles.addressText}>Pincode: {address.pincode}</Text>
-                                <Text style={styles.addressText}>Country: {address.country}</Text>
+                                <Text style={[styles.addressTitle,Theme && {color :DARK.gray[600]}]}>{address.add_name}</Text>
+                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>{address.address}</Text>
+                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>{address.city}, {address.state}</Text>
+                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Floor: {address.floor_no}, Gali: {address.gali_no}</Text>
+                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Landmark: {address.landmark}</Text>
+                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Pincode: {address.pincode}</Text>
+                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Country: {address.country}</Text>
                             </View>
                         </View>
                     ))
@@ -121,15 +125,15 @@ const Address = () => {
                     activeOpacity={1}
                     onPress={closeModal}
                 >
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent,Theme && {backgroundColor:DARK.gray[200],borderColor:DARK.muted,borderWidth:s(1)}]}>
                         <TouchableOpacity
                             style={styles.optionButton}
                             onPress={handleEdit}
                         >
-                            <Text style={styles.optionText}>Edit</Text>
+                            <Text style={[styles.optionText,Theme && {color:DARK.gray[600]}]}>Edit</Text>
                         </TouchableOpacity>
 
-                        <View style={styles.divider} />
+                        <View style={[styles.divider,Theme && {backgroundColor:DARK.muted}]} />
 
                         <TouchableOpacity
                             style={[styles.optionButton, styles.deleteButton]}
@@ -153,9 +157,9 @@ const Address = () => {
                     activeOpacity={1}
                     onPress={closeDeleteModal}
                 >
-                    <View style={styles.DeletModal}>
+                    <View style={[styles.DeletModal,Theme && {backgroundColor:DARK.gray[200],borderColor:DARK.muted,borderWidth:s(1)}]}>
                         <View style={styles.deleteModalHeader}>
-                            <Text style={styles.deleteModalTitle}>Delete Confirmation</Text>
+                            <Text style={[styles.deleteModalTitle,Theme && {color :DARK.gray[600]}]}>Delete Confirmation</Text>
                             <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={closeDeleteModal}
@@ -164,7 +168,7 @@ const Address = () => {
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.deleteModalText}>
+                        <Text style={[styles.deleteModalText,Theme && {color :DARK.gray[600]}]}>
                             Are you sure to delete this address?
                         </Text>
 
@@ -262,7 +266,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: BRAND.white,
+        // backgroundColor: BRAND.white,
         paddingHorizontal: s(20),
         paddingVertical: vs(16),
         borderTopColor: BRAND.border,

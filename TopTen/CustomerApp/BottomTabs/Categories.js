@@ -1,12 +1,14 @@
 import { Alert, Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React from 'react'
-import BRAND from '../../../src/constant/color'
 import { s, vs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
 import { useSelector } from 'react-redux'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { DARK ,BRAND} from '../../../src/constant/colors'
 
 const Categories = () => {
   const ProductCategories = useSelector(state => state.user.categories);
+  const Theme = useSelector(state => state?.auth?.Theme)
   // console.log("ProductCategories on categries screen:", ProductCategories)
 
   const navigation = useNavigation();
@@ -91,18 +93,18 @@ const Categories = () => {
   ]
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor={BRAND.bg} barStyle="dark-content" />
+    <SafeAreaView style={[styles.container, Theme && { backgroundColor: DARK.bg }]}>
+      <StatusBar backgroundColor={Theme ? DARK.bg : BRAND.bg} barStyle="dark-content" />
       <View style={styles.FlateListContainer}>
         <FlatList
-          contentContainerStyle={styles.gridCategoriesContainer}
+          contentContainerStyle={[styles.gridCategoriesContainer, Theme && { backgroundColor: DARK.bg }]}
           data={ProductCategories}
           numColumns={4}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item, index }) => (
             <TouchableOpacity
               style={styles.gridCategoryItem}
-              onPress={() =>{
+              onPress={() => {
                 console.log(item)
                 navigation.navigate('CategoriesCatlog', {
                   title: item.category
@@ -115,19 +117,19 @@ const Categories = () => {
 
 
             >
-              <View style={styles.categoriesBox}>
+              <View style={[styles.categoriesBox, { backgroundColor: Theme ? DARK.gray[400] : BRAND.gray[200] }]}>
                 <Image
                   source={{ uri: item?.images[0]?.image_url }}
                   style={styles.categoryImage}
                   resizeMode='contain'
                 />
               </View>
-              <Text style={styles.gridCategoryTitle}>{formatString(item.category)}</Text>
+              <Text style={[styles.gridCategoryTitle, Theme && { color: DARK.text }]}>{formatString(item.category)}</Text>
             </TouchableOpacity>
           )}
         />
       </View>
-    </View>
+    </SafeAreaView>
   )
 }
 

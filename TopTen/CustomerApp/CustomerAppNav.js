@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack'
 import CustomerMain from '../CustomerApp/CustomerMain';
 import { BackIcon } from '../../src/SVGicons/icon';
 import { ms, s, vs } from 'react-native-size-matters';
-import BRAND from '../../src/constant/color';
+// import BRAND from '../../src/constant/color';
 import PersonalDetails from '../CustomerApp/ProfileScreens/PersonalDetails';
 import Address from '../CustomerApp/ProfileScreens/Address';
 import MyOrder from '../CustomerApp/ProfileScreens/MyOrder';
@@ -20,6 +20,7 @@ import OrderConfirem from '../CustomerApp/ProfileScreens/OrderConfirem';
 import Offers from '../CustomerApp/ProfileScreens/Offers';
 import Catlog from '../CustomerApp/Catlog';
 import { useSelector } from 'react-redux';
+import { DARK,BRAND } from '../../src/constant/colors';
 const Stack = createStackNavigator()
 
 const CustomerAppNav = () => {
@@ -33,19 +34,19 @@ const CustomerAppNav = () => {
         headerTitleStyle: {
             fontSize: ms(22),
             fontWeight: '800',
-            color: BRAND.dark,
+            color: Theme ? DARK.text :BRAND.text,
         },
         headerStyle: {
             elevation: 0,
             shadowOpacity: 0,
-            backgroundColor: BRAND.white,
+            backgroundColor: Theme ? DARK.bg : BRAND.bg,
         },
         headerLeft: () => (
             <TouchableOpacity
-                style={styles.backButton}
+                style={[styles.backButton, {borderColor :Theme ? DARK.border :BRAND.border}]}
                 onPress={() => navigation.goBack()}
             >
-                <BackIcon width={ms(16)} height={ms(16)} />
+                <BackIcon width={ms(16)} height={ms(16)} stroke = {Theme ? DARK.text :BRAND.text} />
             </TouchableOpacity>
         ),
         headerLeftContainerStyle: {
@@ -55,6 +56,7 @@ const CustomerAppNav = () => {
 
     return (
         <Stack.Navigator screenOptions={{
+            animation:'slide_from_right',
             headerShown: true, headerStyle: {
                 backgroundColor: "red"
             }

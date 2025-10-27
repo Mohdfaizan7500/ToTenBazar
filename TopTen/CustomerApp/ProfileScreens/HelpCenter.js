@@ -1,10 +1,15 @@
-import { StyleSheet, Text, View, ScrollView, Linking, TouchableOpacity, Image } from 'react-native'
+import { StyleSheet, Text, View, ScrollView, Linking, TouchableOpacity, Image, StatusBar } from 'react-native'
 import React from 'react'
 import { s, vs, ms } from 'react-native-size-matters'
-import BRAND from '../../../src/constant/color'
+// import BRAND from '../../../src/constant/color'
 import { EmailIcon, LocationIcon, PhoneIcon } from '../../../src/SVGicons/icon'
+import { useSelector } from 'react-redux'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { DARK ,BRAND} from '../../../src/constant/colors'
 
 const HelpCenter = () => {
+    const Theme = useSelector(state => state?.auth?.Theme)
+
     const handleEmailPress = () => {
         Linking.openURL('mailto:Toptambaran.hajpabasi@gmail.com')
     }
@@ -64,47 +69,50 @@ const HelpCenter = () => {
         {
             type: 'address',
             text: '9612 gaf no 12 main Jogotpur road\nnear Sachdeno convent school\nNew Delhi 110084',
-            icon: <LocationIcon width={s(16)} height={s(16)} />
+            icon: <LocationIcon width={s(16)} height={s(16)} stroke={Theme? DARK.text :BRAND.text}/>
         }
     ]
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Social Media Section */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Social Media</Text>
-                {socialMediaItems.map((item, index) => (
-                    <TouchableOpacity key={index} style={styles.item} onPress={item.onPress}>
-                        <View style={styles.iconContainer}>
-                            <Image
-                                source={item.icon}
-                                style={styles.socialIcon}
-                                resizeMode='contain'
-                            />
-                        </View>
-                        <Text style={styles.itemText}>{item.name}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+        <SafeAreaView style={{flex:1}}>
+            <StatusBar backgroundColor={Theme ? DARK.bg :BRAND.bg } barStyle={Theme ? "light-content":"dark-content"}/>
+            <ScrollView style={[styles.container,{backgroundColor :Theme ? DARK.bg :BRAND.bg}]} showsVerticalScrollIndicator={false}>
+                {/* Social Media Section */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle,{color :Theme ? DARK.text:BRAND.text}]}>Social Media</Text>
+                    {socialMediaItems.map((item, index) => (
+                        <TouchableOpacity key={index} style={[styles.item, Theme && {backgroundColor :DARK.gray[100],borderColor:DARK.border,borderWidth:s(1)}]} onPress={item.onPress}>
+                            <View style={[styles.iconContainer, Theme && {backgroundColor:DARK.gray[300]}]}>
+                                <Image
+                                    source={item.icon}
+                                    style={styles.socialIcon}
+                                    resizeMode='contain'
+                                />
+                            </View>
+                            <Text style={[styles.itemText,{color: Theme ? DARK.muted: BRAND.text}]}>{item.name}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
 
-            {/* Customer Support Section */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Customer Support</Text>
-                {supportItems.map((item, index) => (
-                    <TouchableOpacity
-                        key={index}
-                        style={styles.item}
-                        onPress={item.onPress}
-                        disabled={!item.onPress}
-                    >
-                        <View style={styles.iconContainer}>
-                            {item.icon}
-                        </View>
-                        <Text style={styles.itemText}>{item.text}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-        </ScrollView>
+                {/* Customer Support Section */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle,{color :Theme ? DARK.text:BRAND.text}]}>Customer Support</Text>
+                    {supportItems.map((item, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            style={[styles.item, Theme && {backgroundColor :DARK.gray[100],borderColor:DARK.border,borderWidth:s(1)}]}
+                            onPress={item.onPress}
+                            disabled={!item.onPress}
+                        >
+                            <View style={[styles.iconContainer, Theme && {backgroundColor:DARK.gray[300]}]}>
+                                {item.icon}
+                            </View>
+                            <Text style={[styles.itemText,{color: Theme ? DARK.muted: BRAND.text}]}>{item.text}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </ScrollView>
+        </SafeAreaView>
     )
 }
 
@@ -138,7 +146,7 @@ const styles = StyleSheet.create({
     },
     itemText: {
         fontSize: ms(14),
-        fontWeight:"600",
+        fontWeight: "600",
         color: BRAND.text,
         lineHeight: vs(16),
         flex: 1,

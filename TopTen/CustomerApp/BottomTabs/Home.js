@@ -122,7 +122,7 @@ const Home = () => {
   const handleHeaderAnimation = useCallback((currentOffset) => {
     const currentScrollY = currentOffset;
     const deltaY = currentScrollY - lastScrollY.current;
-    
+
     if (isAnimating.current) return;
 
     if (deltaY > 5 && currentScrollY > SCROLL_THRESHOLD) {
@@ -159,13 +159,13 @@ const Home = () => {
         const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
         const scrollPosition = contentOffset.y;
         const screenHeight = layoutMeasurement.height;
-        
+
         // Handle header animation
         handleHeaderAnimation(scrollPosition);
-        
+
         // Existing lazy loading logic
         const newVisibleSections = new Set(['banner', 'categories']);
-        
+
         if (allgroupnames) {
           allgroupnames.forEach((groupName, index) => {
             const sectionPosition = (index * ITEM_HEIGHT_ESTIMATE) + 600;
@@ -174,7 +174,7 @@ const Home = () => {
             }
           });
         }
-        
+
         setVisibleSections(newVisibleSections);
       }
     }
@@ -285,7 +285,7 @@ const Home = () => {
         <Image
           source={{ uri: item?.images?.[0]?.image_url }}
           style={styles.categoryImageFull}
-          resizeMode="contain"
+          resizeMode='cover'
         />
       </View>
       <Text style={styles.gridCategoryTitle}>
@@ -298,8 +298,9 @@ const Home = () => {
     const isApiData = item?.product_image && Array.isArray(item.product_image);
 
     return (
-      <TouchableOpacity style={styles.productCard} onPress={()=>{console.log(item),
-        navigation.navigate('AboutProductScreen',{item})
+      <TouchableOpacity style={styles.productCard} onPress={() => {
+        console.log(item),
+        navigation.navigate('AboutProductScreen', { item })
       }}>
         <View style={styles.productImageContainer}>
           <View style={{ borderRadius: s(8), overflow: "hidden", backgroundColor: BRAND.muted, }}>
@@ -343,7 +344,7 @@ const Home = () => {
       if (!visibleSections.has(`group-${index}`)) {
         return (
           <View key={`${groupName}-${index}`} style={[styles.lazyPlaceholder, { height: ITEM_HEIGHT_ESTIMATE }]}>
-            <ActivityIndicator size={'small'} color={BRAND.primary}/>
+            <ActivityIndicator size={'small'} color={BRAND.primary} />
           </View>
         );
       }
@@ -497,7 +498,7 @@ const Home = () => {
       <View style={styles.bgContainer} />
 
       {/* Animated Header Content */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.headerContainer,
           {
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
   scrollingCardView: {
     width: "100%",
     alignItems: "center",
-    paddingTop:vs(-20)
+    paddingTop: vs(-20)
   },
   card: {
     width: Dimensions.get('window').width - s(40),
@@ -787,7 +788,7 @@ const styles = StyleSheet.create({
     height: Dimensions.get('window').width / s(4) - s(20),
     borderRadius: s(12),
     marginRight: s(5),
-    backgroundColor: '#9DA49E0D',
+    backgroundColor: '#828d840d',
     alignItems: "center",
     justifyContent: "center",
     padding: s(2)

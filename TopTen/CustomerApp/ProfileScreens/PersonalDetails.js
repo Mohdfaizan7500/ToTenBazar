@@ -4,19 +4,21 @@ import {
   StatusBar, Image, Modal, Alert, KeyboardAvoidingView, Platform,
   Animated, ActivityIndicator, PermissionsAndroid
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, DarkTheme } from '@react-navigation/native';
 import { s, vs } from 'react-native-size-matters';
-import BRAND from '../../../src/constant/color';
+// import BRAND from '../../../src/constant/color';
 import { CameraIcon } from '../../../src/SVGicons/icon';
 import ImagePicker from 'react-native-image-crop-picker';
 import { useDispatch, useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { set_profile_pic, updateUserProfile, uploadFileToS3 } from '../../../store/slices/authSlice';
+import { DARK, BRAND } from '../../../src/constant/colors';
 
 const PersonalDetails = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const Theme = useSelector(state => state?.auth?.Theme)
 
   const profile = useSelector(state => state.auth.profile);
   const profileKey = useSelector(state => state.auth.profileKey);
@@ -341,7 +343,7 @@ const PersonalDetails = () => {
           // Update profile picture in Redux store with clean URL
           dispatch(set_profile_pic(cleanUrl));
           await saveProfilePicStorage(cleanUrl);
-          
+
           Alert.alert('Success', 'Profile picture updated successfully');
         } else if (uploadResult?.payload?.key) {
           // If the API returns a key, construct the URL properly
@@ -416,11 +418,11 @@ const PersonalDetails = () => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: Theme ? DARK.bg : BRAND.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <StatusBar backgroundColor={BRAND.white} barStyle="dark-content" />
+      <StatusBar backgroundColor={Theme ? DARK.bg : BRAND.bg } barStyle={ Theme ?'light-content':"dark-content"} />
 
       <Animated.View style={[styles.animatedContainer, { opacity: fadeAnim }]}>
         <ScrollView
@@ -436,10 +438,10 @@ const PersonalDetails = () => {
               style={styles.avatarContainer}
               disabled={uploading}
             >
-              <View style={styles.avatar}>
+              <View style={[styles.avatar, { borderColor: Theme ? DARK.blue : BRAND.primary }]}>
                 {uploading ? (
                   <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={BRAND.primary} />
+                    <ActivityIndicator size="large" color={Theme ? DARK.blue : BRAND.primary} />
                     <Text style={styles.uploadingText}>Uploading...</Text>
                   </View>
                 ) : (
@@ -456,7 +458,7 @@ const PersonalDetails = () => {
               </View>
               <TouchableOpacity
                 onPress={() => setModalVisible(true)}
-                style={styles.cameraIconContainer}
+                style={[styles.cameraIconContainer, Theme && { backgroundColor: DARK.bg, borderColor: DARK.blue }]}
                 disabled={uploading}
               >
                 <CameraIcon width={s(14)} height={s(14)} />
@@ -468,21 +470,21 @@ const PersonalDetails = () => {
                 style={styles.removePhotoButton}
                 onPress={handleRemovePhoto}
               >
-                <Text style={styles.removePhotoText}>Remove Photo</Text>
+                <Text style={[styles.removePhotoText, Theme && { color: DARK.gray[500] }]}>Remove Photo</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Form Fields */}
           <View style={styles.inputSection}>
-            <Text style={styles.label}>First Name *</Text>
+            <Text style={[styles.label, { color: Theme ? DARK.text : BRAND.text }]}>First Name *</Text>
             <TextInput
               style={[
-                styles.textInput,
+                styles.textInput, Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border, color: DARK.gray[600] },
                 errors.first_name && styles.inputError
               ]}
               placeholder="Enter Your First Name"
-              placeholderTextColor={BRAND.muted}
+              placeholderTextColor={Theme ? DARK.muted : BRAND.muted}
               value={formData.first_name}
               onChangeText={text => handleChange('first_name', text)}
               maxLength={50}
@@ -494,10 +496,10 @@ const PersonalDetails = () => {
           </View>
 
           <View style={styles.inputSection}>
-            <Text style={styles.label}>Last Name *</Text>
+            <Text style={[styles.label, { color: Theme ? DARK.text : BRAND.text }]}>Last Name *</Text>
             <TextInput
               style={[
-                styles.textInput,
+                styles.textInput, Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border, color: DARK.gray[600] },
                 errors.last_name && styles.inputError
               ]}
               placeholder="Enter Your Last Name"
@@ -513,10 +515,11 @@ const PersonalDetails = () => {
           </View>
 
           <View style={styles.inputSection}>
-            <Text style={styles.label}>Phone Number</Text>
+            <Text style={[styles.label, { color: Theme ? DARK.text : BRAND.text }]}>Phone Number</Text>
             <TextInput
               editable={false}
-              style={[styles.textInput, styles.disabledInput]}
+              style={[styles.textInput, Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border, color: DARK.gray[600] }, 
+              styles.disabledInput , Theme && {backgroundColor :DARK.muted,color:DARK.gray[200]} ]}
               placeholder="Enter Your Phone Number"
               placeholderTextColor={BRAND.muted}
               keyboardType="phone-pad"
@@ -525,7 +528,7 @@ const PersonalDetails = () => {
             <View style={styles.verificationContainer}>
               <Text style={[
                 styles.verificationText,
-                phoneVerified ? styles.verified : styles.notVerified
+                phoneVerified ? ([styles.verified, { color: Theme ? DARK.gray[400] : BRAND.text }]) : ([styles.notVerified, { color: Theme ? DARK.gray[400] : BRAND.text }])
               ]}>
                 {phoneVerified ? '✓ Phone Verified' : '✗ Phone Not Verified'}
               </Text>
@@ -538,10 +541,11 @@ const PersonalDetails = () => {
           </View>
 
           <View style={styles.inputSection}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={[styles.label, { color: Theme ? DARK.text : BRAND.text }]}>Email</Text>
             <TextInput
               style={[
                 styles.textInput,
+                 Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border, color: DARK.gray[600] }, 
                 errors.email && styles.inputError
               ]}
               placeholder="Enter Your Email"
@@ -560,7 +564,7 @@ const PersonalDetails = () => {
                 <>
                   <Text style={[
                     styles.verificationText,
-                    emailVerified ? styles.verified : styles.notVerified
+                    emailVerified ? ([styles.verified, { color: Theme ? DARK.gray[400] : BRAND.text }]) : ([styles.notVerified, { color: Theme ? DARK.gray[400] : BRAND.text }])
                   ]}>
                     {emailVerified ? '✓ Email Verified' : '✗ Email Not Verified'}
                   </Text>
@@ -575,9 +579,9 @@ const PersonalDetails = () => {
           </View>
 
           <View style={styles.inputSection}>
-            <Text style={styles.label}>Location</Text>
+            <Text style={[styles.label, { color: Theme ? DARK.text : BRAND.text }]}>Location</Text>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border, color: DARK.gray[600] }]}
               placeholder="Enter Your Location"
               placeholderTextColor={BRAND.muted}
               value={formData.location}
@@ -620,8 +624,8 @@ const PersonalDetails = () => {
           onPress={() => setModalVisible(false)}
         >
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Change Profile Photo</Text>
+            <View style={[styles.modalContainer, Theme && {backgroundColor:DARK.bg}]}>
+              <Text style={[styles.modalTitle,Theme && {color :DARK.gray[500]}]}>Change Profile Photo</Text>
 
               <TouchableOpacity
                 style={styles.modalButton}
@@ -631,7 +635,7 @@ const PersonalDetails = () => {
                 <Text style={styles.modalButtonText}>Take Photo</Text>
               </TouchableOpacity>
 
-              <View style={styles.modalDivider} />
+              <View style={[styles.modalDivider,Theme && {backgroundColor:DARK.border}]} />
 
               <TouchableOpacity
                 style={styles.modalButton}
@@ -641,14 +645,14 @@ const PersonalDetails = () => {
                 <Text style={styles.modalButtonText}>Choose from Gallery</Text>
               </TouchableOpacity>
 
-              <View style={styles.modalDivider} />
+              <View style={[styles.modalDivider,Theme && {backgroundColor:DARK.border}]} />
 
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setModalVisible(false)}
                 disabled={uploading}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText,Theme && {color :DARK.text}]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>

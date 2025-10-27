@@ -82,21 +82,21 @@ const CustomerMain = () => {
                     headerTitleStyle: {
                         fontSize: ms(22),
                         fontWeight: '800',
-                        color: BRAND.dark,
+                        color: Theme ?  DARK.text: BRAND.text,
                     },
                     headerStyle: {
                         elevation: 0,
                         shadowOpacity: 0,
-                        backgroundColor: BRAND.white,
+                        backgroundColor: Theme ? DARK.bg: BRAND.bg,
                     },
                     headerLeft: () => (
                         <TouchableOpacity
-                            style={styles.backButton}
+                            style={[styles.backButton,Theme && {borderColor:DARK.border}]}
                             onPress={() => {
                                 navigation.navigate('Home')
                             }}
                         >
-                            <BackIcon width={ms(16)} height={ms(16)} />
+                            <BackIcon width={ms(16)} height={ms(16)} stroke={Theme ? DARK.text: BRAND.text} />
                         </TouchableOpacity>
                     ),
                     headerLeftContainerStyle: {

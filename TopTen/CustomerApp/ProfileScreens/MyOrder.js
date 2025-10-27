@@ -1,9 +1,14 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Modal } from 'react-native'
 import React, { useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
+import { useSelector } from 'react-redux'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { DARK ,BRAND} from '../../../src/constant/colors'
+import { s } from 'react-native-size-matters'
 
 const MyOrder = () => {
   const navigation = useNavigation()
+  const Theme = useSelector(state=>state?.auth?.Theme)
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   
@@ -215,18 +220,19 @@ const MyOrder = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.ordersContainer} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={[styles.ordersContainer,{backgroundColor : Theme ?DARK.bg:BRAND.bg}]} showsVerticalScrollIndicator={false}>
         {orders.map((order) => (
           <TouchableOpacity 
             key={order.id} 
-            style={styles.orderCard}
+            style={[styles.orderCard, Theme ?  {backgroundColor :DARK.white,borderColor:DARK.border,borderWidth:s(1)} : 
+              {backgroundColor:BRAND.white,borderColor:DARK.border,borderWidth:s(1)}]}
             onPress={() => handleOrderPress(order)}
             activeOpacity={0.7}
           >
             <View style={styles.orderHeader}>
-              <Text style={styles.orderDate}>Placed on {order.date}</Text>
-              <Text style={styles.orderAmount}>${order.amount}</Text>
+              <Text style={[styles.orderDate,{color :Theme ? DARK.gray[500] :BRAND.gray[500]}]}>Placed on {order.date}</Text>
+              <Text style={[styles.orderAmount,{color :Theme ? DARK.gray[500] :BRAND.gray[500]}]}>${order.amount}</Text>
             </View>
             
             <View style={styles.itemsContainer}>
@@ -271,7 +277,7 @@ const MyOrder = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   )
 }
 
@@ -281,14 +287,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingTop: 10,
+    // paddingTop: 10,
   },
   ordersContainer: {
     flex: 1,
+    paddingTop:s(10),
     paddingHorizontal: 12,
   },
   orderCard: {
-    backgroundColor: 'white',
+    // backgroundColor: 'white',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
