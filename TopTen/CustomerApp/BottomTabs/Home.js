@@ -6,6 +6,7 @@ import { s, vs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
 import { useSelector } from 'react-redux'
 import LinearGradient from 'react-native-linear-gradient'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const Home = () => {
   // Refs and state
@@ -80,14 +81,48 @@ const Home = () => {
       price: 12,
       mrp: 14
     },
-    // ... rest of BestDeal items
+    {
+      title: "Fortune Arhar Dal (Toor Dal)",
+      image: require('../../../src/images/fortne.png'),
+      weight: "340 ml",
+      price: 18,
+      mrp: 22
+    },
+    {
+      title: "Maggi Noodles Masala",
+      image: require('../../../src/images/cocacola.png'),
+      weight: "70 g",
+      price: 8,
+      mrp: 10
+    },
+    {
+      title: "Lay's Classic Potato Chips",
+      image: require('../../../src/images/cocacola.png'),
+      weight: "50 g",
+      price: 15,
+      mrp: 20
+    },
+    {
+      title: "Colgate Strong Teeth Toothpaste",
+      image: require('../../../src/images/cocacola.png'),
+      weight: "100 g",
+      price: 6,
+      mrp: 8
+    },
+    {
+      title: "Amul Butter",
+      image: require('../../../src/images/cocacola.png'),
+      weight: "100 g",
+      price: 25,
+      mrp: 30
+    }
   ], [])
 
   // Smoother header animation handler
   const handleHeaderAnimation = useCallback((currentOffset) => {
     const currentScrollY = currentOffset;
     const deltaY = currentScrollY - lastScrollY.current;
-
+    
     if (isAnimating.current) return;
 
     if (deltaY > 5 && currentScrollY > SCROLL_THRESHOLD) {
@@ -124,13 +159,13 @@ const Home = () => {
         const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
         const scrollPosition = contentOffset.y;
         const screenHeight = layoutMeasurement.height;
-
+        
         // Handle header animation
         handleHeaderAnimation(scrollPosition);
-
+        
         // Existing lazy loading logic
         const newVisibleSections = new Set(['banner', 'categories']);
-
+        
         if (allgroupnames) {
           allgroupnames.forEach((groupName, index) => {
             const sectionPosition = (index * ITEM_HEIGHT_ESTIMATE) + 600;
@@ -139,7 +174,7 @@ const Home = () => {
             }
           });
         }
-
+        
         setVisibleSections(newVisibleSections);
       }
     }
@@ -166,7 +201,7 @@ const Home = () => {
     }
   }, [slicedBannerConfig.length]);
 
-  // Event handlers (keep the same as before)
+  // Event handlers
   const handleScrollEnd = useCallback((event) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x
     const cardWidth = Dimensions.get('window').width - 50 + s(30)
@@ -197,7 +232,7 @@ const Home = () => {
       .join(' & \n');
   }, [])
 
-  // Render functions (keep the same as before)
+  // Render functions
   const renderBannerItem = useCallback(({ item, index }) => (
     <LinearGradient
       colors={['red', 'blue']}
@@ -263,7 +298,9 @@ const Home = () => {
     const isApiData = item?.product_image && Array.isArray(item.product_image);
 
     return (
-      <View style={styles.productCard}>
+      <TouchableOpacity style={styles.productCard} onPress={()=>{console.log(item),
+        navigation.navigate('AboutProductScreen',{item})
+      }}>
         <View style={styles.productImageContainer}>
           <View style={{ borderRadius: s(8), overflow: "hidden", backgroundColor: BRAND.muted, }}>
             <Image
@@ -294,7 +331,7 @@ const Home = () => {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   }, [])
 
@@ -306,7 +343,7 @@ const Home = () => {
       if (!visibleSections.has(`group-${index}`)) {
         return (
           <View key={`${groupName}-${index}`} style={[styles.lazyPlaceholder, { height: ITEM_HEIGHT_ESTIMATE }]}>
-            <ActivityIndicator size={'small'} color={BRAND.primary} />
+            <ActivityIndicator size={'small'} color={BRAND.primary}/>
           </View>
         );
       }
@@ -315,7 +352,7 @@ const Home = () => {
       const displayData = groupData && groupData.length > 0 ? groupData : BestDeal;
 
       return (
-        <View key={`${groupName}-${index}`} style={{ width: "100%", marginBottom: 10 }}>
+        <View key={`${groupName}-${index}`} style={{ width: "100%", marginBottom: 0 }}>
           <View style={[styles.HeadingContainer, styles.bestDealHeading]}>
             <Text style={styles.HeadingText}>{groupName}</Text>
             <Text style={styles.SeeAllText} onPress={() => {
@@ -452,65 +489,60 @@ const Home = () => {
     visibleSections
   ]);
 
-  // Header Component - FIXED: Removed high zIndex and absolute positioning
-  const Header = useMemo(() => (
-    <Animated.View
-      style={[
-        styles.headerContainer,
-        {
-          transform: [{ translateY: headerTranslateY }],
-          height: HEADER_HEIGHT,
-        }
-      ]}
-    >
-      {/* Background Container */}
-      <View style={styles.bgContainer} />
-
-      {/* Header Content */}
-      <View style={styles.headerContent}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.locationContainer} onPress={() => navigation.navigate('Address')}>
-            <View style={styles.iconCircle}>
-              <LocationIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
-            </View>
-            <View>
-              <View style={styles.addressHeader}>
-                <Text style={styles.homeText}>Home</Text>
-                <DownArrowIcon width={s(22)} height={s(22)} stroke={BRAND.white} />
-              </View>
-              <Text style={styles.address}>Karol Bagh, New Delhi</Text>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.iconsContainer}>
-            <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notification')}>
-              <BellIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('MyCart')}>
-              <BagIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <SearchIcon width={s(22)} height={s(22)} stroke={BRAND.muted} />
-          <TextInput
-            placeholder='Search'
-            placeholderTextColor={BRAND.muted}
-            style={styles.searchinput}
-          />
-        </View>
-      </View>
-    </Animated.View>
-  ), [navigation, headerTranslateY, HEADER_HEIGHT]);
-
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor={BRAND.primary} barStyle="dark-content" />
 
-      {/* Header - Now part of normal flow with negative margin */}
-      {Header}
+      {/* Fixed Background Container - Separate from animated header */}
+      <View style={styles.bgContainer} />
+
+      {/* Animated Header Content */}
+      <Animated.View 
+        style={[
+          styles.headerContainer,
+          {
+            transform: [{ translateY: headerTranslateY }],
+            height: HEADER_HEIGHT,
+          }
+        ]}
+      >
+        {/* Header Content */}
+        <View style={styles.headerContent}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.locationContainer} onPress={() => navigation.navigate('Address')}>
+              <View style={styles.iconCircle}>
+                <LocationIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+              </View>
+              <View>
+                <View style={styles.addressHeader}>
+                  <Text style={styles.homeText}>Home</Text>
+                  <DownArrowIcon width={s(22)} height={s(22)} stroke={BRAND.white} />
+                </View>
+                <Text style={styles.address}>Karol Bagh, New Delhi</Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.iconsContainer}>
+              <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notification')}>
+                <BellIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('MyCart')}>
+                <BagIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <SearchIcon width={s(22)} height={s(22)} stroke={BRAND.muted} />
+            <TextInput
+              placeholder='Search'
+              placeholderTextColor={BRAND.muted}
+              style={styles.searchinput}
+            />
+          </View>
+        </View>
+      </Animated.View>
 
       {/* Main Content with Lazy Loading */}
       <FlatList
@@ -529,11 +561,8 @@ const Home = () => {
         updateCellsBatchingPeriod={50}
         contentContainerStyle={styles.flatListContent}
         decelerationRate="normal"
-        // Add negative margin to pull content behind header
-        contentInset={{ top: HEADER_HEIGHT }}
-        contentOffset={{ y: -HEADER_HEIGHT }}
       />
-    </View>
+    </SafeAreaView>
   )
 }
 
@@ -544,30 +573,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BRAND.bg
   },
-  headerContainer: {
-    // REMOVED: position: 'absolute', top: 0, left: 0, right: 0
-    // Now it's part of normal flow but animated
-    width: '100%',
-    borderBottomRightRadius: s(50),
-    borderBottomLeftRadius: s(50),
-    overflow: 'hidden',
-    // Lower zIndex so content can scroll behind
-    zIndex: 10,
-    elevation: 5,
-  },
-  headerContent: {
-    width: '100%',
-  },
-  mainFlatList: {
-    flex: 1,
-    // Pull the FlatList up to overlap with header
-    marginTop: -vs(160), // This should match HEADER_HEIGHT
-  },
-  flatListContent: {
-    // Add padding to start content below header
-    paddingTop: vs(160), // This should match HEADER_HEIGHT
-    paddingBottom: vs(10),
-  },
+  // Fixed background that doesn't move
   bgContainer: {
     width: "100%",
     height: vs(200),
@@ -578,7 +584,29 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 0,
+    zIndex: 0, // Lowest zIndex - stays behind everything
+  },
+  // Animated header container (content only, no background)
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20, // Highest zIndex - stays on top
+    elevation: 10,
+  },
+  headerContent: {
+    width: '100%',
+    // backgroundColor:"red"
+  },
+  mainFlatList: {
+    flex: 1,
+    zIndex: 10, // Middle zIndex - scrolls behind header but above background
+    elevation: 5,
+  },
+  flatListContent: {
+    paddingTop: vs(110), // This should match HEADER_HEIGHT
+    paddingBottom: vs(10),
   },
   header: {
     width: "100%",
@@ -606,8 +634,8 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.white,
     padding: s(10),
     borderRadius: s(100),
-    width: s(40),
-    height: s(40),
+    width: s(35),
+    height: s(35),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: '#000',
@@ -652,9 +680,7 @@ const styles = StyleSheet.create({
   scrollingCardView: {
     width: "100%",
     alignItems: "center",
-    top:s(-30),
-    // zIndex:100,
-    // position:"absolute"
+    paddingTop:vs(-20)
   },
   card: {
     width: Dimensions.get('window').width - s(40),
@@ -688,9 +714,6 @@ const styles = StyleSheet.create({
   },
   flatListCard: {
     paddingVertical: vs(5),
-    // paddingTop:s(-100),
-    // position:"absolute"
-
   },
   pager: {
     width: s(8),

@@ -15,29 +15,35 @@ import React, { useState, useEffect } from 'react';
 import {
   CameraIcon,
   HeplIcon,
+  MoonIcon,
   MyOrderIcon,
   ProfileIcon2,
   RightArrowICon,
   SettingIcon,
   SignOutIcon,
+  SunIcon,
 } from '../../../src/SVGicons/icon';
 import { s, vs } from 'react-native-size-matters';
-import BRAND from '../../../src/constant/color';
-import { useNavigation } from '@react-navigation/native';
+import { BRAND, DARK } from '../../../src/constant/colors';
+import { DarkTheme, useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearTokens, set_profile_pic, uploadFileToS3 } from '../../../store/slices/authSlice';
+import { clearTokens, set_profile_pic, setTheme, uploadFileToS3 } from '../../../store/slices/authSlice';
 import ImagePicker from 'react-native-image-crop-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Profile = () => {
   const iconWidth = s(16);
   const iconHeight = s(16);
+  // const [theme, setTheme] = useState(false)
   const profile = useSelector(state => state?.auth?.profile);
   const profile_pic = useSelector(state => state?.auth?.profile_pic);
   const isLoading = useSelector(state => state?.auth?.isLoading);
+  const Theme = useSelector(state => state?.auth?.Theme)
+  console.log("Theme", Theme)
   const [modalVisible, setModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+
   console.log('Profile pic on profile screen:', profile_pic);
 
   const navigation = useNavigation();
@@ -46,7 +52,7 @@ const Profile = () => {
   // Clean URL function to fix encoding issues
   const cleanProfilePicUrl = (url) => {
     if (!url) return null;
-    
+
     // Fix double encoding issues that are happening
     let cleanUrl = url
       .replace(/%253A/g, ':')
@@ -55,7 +61,7 @@ const Profile = () => {
       .replace(/%253D/g, '=')
       .replace(/%2526/g, '&')
       .replace(/%2525/g, '%');
-    
+
     return cleanUrl;
   };
 
@@ -158,7 +164,7 @@ const Profile = () => {
 
   const handleImageSelection = async (fromCamera) => {
     setModalVisible(false);
-    
+
     // Check permissions
     if (fromCamera) {
       const hasPermission = await requestCameraPermission();
@@ -204,7 +210,7 @@ const Profile = () => {
 
       if (image) {
         console.log('Selected image:', image);
-        
+
         const file = {
           uri: image.path,
           type: image.mime || 'image/jpeg',
@@ -213,11 +219,11 @@ const Profile = () => {
 
         console.log('Uploading file:', file);
         const uploadResult = await dispatch(uploadFileToS3(file));
-        
+
         if (uploadResult?.payload?.presigned_url) {
           // Clean the URL before storing
           const cleanUrl = cleanProfilePicUrl(uploadResult.payload.presigned_url);
-          
+
           // Update Redux store and AsyncStorage
           dispatch(set_profile_pic(cleanUrl));
           await saveProfilePic(cleanUrl);
@@ -227,7 +233,7 @@ const Profile = () => {
           const baseUrl = 'https://s3.ap-south-1.amazonaws.com/toptenbazar/';
           const imageUrl = baseUrl + uploadResult.payload.key;
           const cleanUrl = cleanProfilePicUrl(imageUrl);
-          
+
           dispatch(set_profile_pic(cleanUrl));
           await saveProfilePic(cleanUrl);
           Alert.alert('Success', 'Profile picture updated successfully');
@@ -237,7 +243,7 @@ const Profile = () => {
       console.log('Image picker error:', error);
       if (error.code !== 'E_PICKER_CANCELLED') {
         let errorMessage = 'Failed to process image';
-        
+
         if (error.code === 'E_PERMISSION_MISSING') {
           errorMessage = 'Permission denied. Please check app permissions in settings.';
         } else if (error.code === 'E_NO_LIBRARY_PERMISSION') {
@@ -247,7 +253,7 @@ const Profile = () => {
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
         Alert.alert('Error', errorMessage);
       }
     } finally {
@@ -293,7 +299,7 @@ const Profile = () => {
   // Get clean image source
   const getImageSource = () => {
     const cleanPicUrl = cleanProfilePicUrl(profile_pic);
-    
+
     if (cleanPicUrl) {
       return { uri: cleanPicUrl };
     } else if (profile?.profile_pic_url) {
@@ -305,16 +311,16 @@ const Profile = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor={BRAND.white} />
-      
+    <SafeAreaView style={[styles.container, { backgroundColor: Theme ? DARK.bg : BRAND.bg }]}>
+      <StatusBar backgroundColor={Theme ? DARK.bg : BRAND.bg} barStyle={Theme ? DARK.text : BRAND.text} />
+
       {/* Profile Picture Section */}
       <View style={styles.avatarSection}>
         <View
           style={styles.avatarContainer}
           disabled={uploading}
         >
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, Theme && { borderColor: DARK.blue }]}>
             {uploading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={BRAND.primary} />
@@ -332,54 +338,60 @@ const Profile = () => {
               />
             )}
           </View>
-          
+
         </View>
-        
+
         {profile_pic && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.removePhotoButton}
             onPress={handleRemovePhoto}
             disabled={uploading}
           >
-            <Text style={styles.removePhotoText}>Remove Photo</Text>
+            <Text style={[styles.removePhotoText, Theme && { color: DARK.text }]}>Remove Photo</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <Text style={styles.name}>
+      <Text style={[styles.name, Theme && { color: DARK.text }]}>
         {capitalizeFirstLetter(profile?.first_name ?? '')}{' '}
         {capitalizeFirstLetter(profile?.last_name ?? '')}
       </Text>
       <Text style={styles.email}>{profile?.email ?? ''}</Text>
 
-      <View style={styles.menuCard}>
+      <View style={[styles.menuCard, Theme && { backgroundColor: DARK.bg, borderColor: DARK.border }]}>
         <MenuItem
           title="Personal Details"
-          icon={<ProfileIcon2 width={iconWidth} height={iconHeight} />}
+          icon={<ProfileIcon2 width={iconWidth} height={iconHeight} stroke={Theme ? DARK.text : BRAND.text} />}
           onPress={() => navigateHandle('PersonalDetails')}
+          Theme={Theme}
         />
-        <View style={styles.divider} />
+        <View style={[styles.divider, Theme && { backgroundColor: DARK.border }]} />
         <MenuItem
           title="Addresses"
-          icon={<SettingIcon width={iconWidth} height={iconHeight} />}
+          icon={<SettingIcon width={iconWidth} height={iconHeight} stroke={Theme ? DARK.text : BRAND.text} />}
           onPress={() => navigateHandle('Address')}
+          Theme={Theme}
+
         />
-        <View style={styles.divider} />
+        <View style={[styles.divider, Theme && { backgroundColor: DARK.border }]} />
         <MenuItem
           title="My Orders"
-          icon={<MyOrderIcon width={iconWidth} height={iconHeight} />}
+          icon={<MyOrderIcon width={iconWidth} height={iconHeight} stroke={Theme ? DARK.text : BRAND.text} />}
           onPress={() => navigateHandle('MyOrder')}
+          Theme={Theme}
+
         />
-        <View style={styles.divider} />
+        <View style={[styles.divider, Theme && { backgroundColor: DARK.border }]} />
         <MenuItem
           title="Help Center"
-          icon={<HeplIcon width={iconWidth} height={iconHeight} />}
+          icon={<HeplIcon width={iconWidth} height={iconHeight} stroke={Theme ? DARK.text : BRAND.text} />}
           onPress={() => navigateHandle('HelpCenter')}
+          Theme={Theme}
         />
       </View>
 
-      <TouchableOpacity 
-        style={styles.SignOutButton} 
+      <TouchableOpacity
+        style={[styles.SignOutButton, Theme && { backgroundColor: DARK.bg, borderColor: DARK.border }]}
         onPress={SignOuthandle}
         disabled={isLoading}
       >
@@ -399,7 +411,7 @@ const Profile = () => {
         visible={modalVisible}
         onRequestClose={handleCancel}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={handleCancel}
@@ -407,17 +419,17 @@ const Profile = () => {
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>Change Profile Photo</Text>
-              
-              <TouchableOpacity 
-                style={styles.modalButton} 
+
+              <TouchableOpacity
+                style={styles.modalButton}
                 onPress={handleTakePhoto}
                 disabled={uploading}
               >
                 <Text style={styles.modalButtonText}>Take Photo</Text>
               </TouchableOpacity>
-              
+
               <View style={styles.modalDivider} />
-              
+
               <TouchableOpacity
                 style={styles.modalButton}
                 onPress={handleChooseFromGallery}
@@ -425,9 +437,9 @@ const Profile = () => {
               >
                 <Text style={styles.modalButtonText}>Choose from Gallery</Text>
               </TouchableOpacity>
-              
-              <View style={styles.modalDivider} />
-              
+
+              <View style={[styles.modalDivider, Theme && { backgroundColor: DARK.border }]} />
+
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={handleCancel}
@@ -439,24 +451,36 @@ const Profile = () => {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+      <TouchableOpacity style={[styles.ThemeCircle, { borderColor: Theme ? DARK.border : BRAND.border }]} onPress={() => {
+        dispatch(setTheme(!Theme))
+      }}>
+        {
+          Theme ?
+            <MoonIcon width={s(20)} height={s(20)} fill={BRAND.white} />
+            :
+            <SunIcon width={s(20)} height={s(20)} />
+
+        }
+
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 };
 
-const MenuItem = ({ title, icon, onPress }) => (
+const MenuItem = ({ title, icon, onPress, Theme }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
     <View style={styles.menuItemContent}>
-      <View style={styles.iconBOx}>{icon}</View>
-      <Text style={styles.menuText}>{title}</Text>
+      <View style={[styles.iconBOx, Theme && { backgroundColor: DARK.gray[300] }]}>{icon}</View>
+      <Text style={[styles.menuText, Theme && { color: DARK.text }]}>{title}</Text>
     </View>
-    <RightArrowICon width={s(14)} height={s(14)} />
+    <RightArrowICon width={s(14)} height={s(14)} stroke={Theme ? DARK.border : BRAND.black} />
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BRAND.white,
+    backgroundColor: BRAND.bg,
     alignItems: 'center',
     paddingTop: vs(15),
   },
@@ -467,6 +491,7 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginBottom: vs(10),
+    marginTop: s(20)
   },
   avatar: {
     width: s(120),
@@ -538,7 +563,7 @@ const styles = StyleSheet.create({
   menuCard: {
     marginTop: vs(12),
     width: '90%',
-    backgroundColor: BRAND.white,
+    backgroundColor: BRAND.bg,
     borderRadius: s(10),
     borderWidth: s(1),
     borderColor: BRAND.border,
@@ -584,7 +609,7 @@ const styles = StyleSheet.create({
     marginTop: vs(12),
     borderRadius: s(100),
     flexDirection: 'row',
-    backgroundColor: BRAND.white,
+    backgroundColor: BRAND.bg,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -594,7 +619,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   signUptext: {
-    color: BRAND.error,
+    color: "#F14141",
     fontSize: s(14),
     fontWeight: '500',
   },
@@ -662,6 +687,18 @@ const styles = StyleSheet.create({
     color: BRAND.error,
     fontWeight: '600',
   },
+  ThemeCircle: {
+    width: s(40),
+    height: s(40),
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: s(1),
+    borderColor: BRAND.border,
+    borderRadius: s(100),
+    position: "absolute",
+    top: s(5),
+    right: s(14)
+  }
 });
 
 export default Profile;

@@ -6,8 +6,9 @@ import Home from '../CustomerApp/BottomTabs/Home';
 import Profile from '../CustomerApp/BottomTabs/Profile';
 import Categories from '../CustomerApp/BottomTabs/Categories';
 import { BackIcon, CategoriesIcon, HomeIcon, ProfileIcon } from '../../src/SVGicons/icon';
-import BRAND from '../../src/constant/color';
 import ProfileNavigator from '../CustomerApp/ProfileScreens/ProfileNavigator';
+import { useSelector } from 'react-redux';
+import { DARK ,BRAND} from '../../src/constant/colors';
 
 const Tabs = createBottomTabNavigator();
 
@@ -25,6 +26,8 @@ const getTabBarConfig = () => {
 };
 
 const CustomerMain = () => {
+    const Theme = useSelector(state => state?.auth?.Theme)
+
     // Call the regular function instead of a custom hook
     const {
         tabBarHeight,
@@ -45,7 +48,8 @@ const CustomerMain = () => {
                     paddingTop: paddingVertical,
                     backgroundColor: 'white',
                     borderTopWidth: borderWidth,
-                    borderTopColor: '#e0e0e0',
+                    borderTopColor: Theme ? DARK.border : '#e0e0e0',
+                    backgroundColor: Theme ? DARK.bg :BRAND.bg
                 },
                 tabBarLabelStyle: {
                     fontSize: labelFontSize,
@@ -56,7 +60,7 @@ const CustomerMain = () => {
                     marginTop: iconMarginTop,
                 },
                 tabBarActiveTintColor: BRAND.orange,
-                tabBarInactiveTintColor: BRAND.muted,
+                tabBarInactiveTintColor: Theme ? DARK.text: BRAND.muted,
             }}
         >
             <Tabs.Screen
@@ -117,12 +121,13 @@ const CustomerMain = () => {
                     headerTitleStyle: {
                         fontSize: ms(22),
                         fontWeight: '800',
-                        color: BRAND.dark,
+                        color: Theme ? DARK.text: BRAND.dark,
                     },
                     headerStyle: {
                         elevation: 0,
                         shadowOpacity: 0,
-                        backgroundColor: BRAND.white,
+                        backgroundColor: Theme ? DARK.bg: BRAND.bg,
+                        // borderBottomWidth:1
                     },
                     headerLeft: () => (
                         <TouchableOpacity
@@ -131,7 +136,7 @@ const CustomerMain = () => {
                                 navigation.navigate('Home')
                             }}
                         >
-                            <BackIcon width={ms(16)} height={ms(16)} />
+                            <BackIcon width={ms(16)} height={ms(16)} stroke ={Theme ? DARK.text :BRAND.text} />
                         </TouchableOpacity>
                     ),
                     headerLeftContainerStyle: {

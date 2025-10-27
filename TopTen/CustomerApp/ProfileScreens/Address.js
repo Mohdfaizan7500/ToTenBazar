@@ -6,6 +6,7 @@ import { AddressIcon, CrossIcon, ThreeDotIcon } from '../../../src/SVGicons/icon
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { deleteUserAddress, fetchUserAddress } from '../../../store/slices/userSlice';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Address = () => {
     const [modalVisible, setModalVisible] = useState(false);
@@ -74,7 +75,7 @@ const Address = () => {
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
@@ -187,15 +188,26 @@ const Address = () => {
 
             {/* Add New Address Button */}
             <View style={styles.bottomContainer}>
-                <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('EditAdrees', {
-                    onSave: (newAddress) => {
-                        // You can add new address logic here
+                <TouchableOpacity style={styles.addButton} onPress={() => {
+                    console.log('No of address:', userAddresses.length)
+                    if (userAddresses.length < 5) {
+                        navigation.navigate('EditAdrees', {
+                            onSave: (newAddress) => {
+                                // You can add new address logic here
+                            }
+                        })
                     }
-                })}>
+                    else {
+                        Alert.alert('Alert', 'To add new address , plz delete a one .')
+
+                    }
+
+                }
+                }>
                     <Text style={styles.addButtonText}>Add New Address</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </SafeAreaView>
     );
 };
 

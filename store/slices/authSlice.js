@@ -311,6 +311,7 @@ const initialState = {
   isLoading: false,
   error: null,
   profileKey: null,
+  Theme: null,
 };
 
 const authSlice = createSlice({
@@ -322,6 +323,9 @@ const authSlice = createSlice({
       // Clean the URL before setting in state
       const cleanUrlValue = cleanUrl(action.payload);
       state.profile_pic = cleanUrlValue;
+    },
+    setTheme :(state,action)=>{
+      state.Theme = action.payload
     },
     clearTokens: (state) => {
       state.user = null;
@@ -482,7 +486,8 @@ export const {
   clearTokens,
   set_profile_pic,
   clearError,
-  setLoading
+  setLoading,
+  setTheme
 } = authSlice.actions;
 
 export default authSlice.reducer;

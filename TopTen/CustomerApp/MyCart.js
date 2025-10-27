@@ -1,12 +1,136 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useCallback, useMemo, memo } from 'react'
 import BRAND from '../../src/constant/color'
-import { s } from 'react-native-size-matters'
+import { s, vs, ms } from 'react-native-size-matters'
 import { CheckIcon, CheckIcon2, DeleteIcon, MinusIcon, PlusIcon } from '../../src/SVGicons/icon'
 import { useNavigation } from '@react-navigation/native'
 
+// Skeleton Loader Component with Wave Effect
+const SkeletonLoader = memo(() => {
+  return (
+    <View style={styles.skeletonContainer}>
+      {[1, 2, 3, 4].map((item) => (
+        <View key={item} style={styles.skeletonItem}>
+          <View style={styles.skeletonCheckbox} />
+          <View style={styles.skeletonImage} />
+          <View style={styles.skeletonContent}>
+            <View style={styles.skeletonText} />
+            <View style={[styles.skeletonText, { width: '40%' }]} />
+            <View style={styles.skeletonControls}>
+              <View style={styles.skeletonCircle} />
+              <View style={styles.skeletonQuantity} />
+              <View style={styles.skeletonCircle} />
+              <View style={styles.skeletonDelete} />
+            </View>
+          </View>
+        </View>
+      ))}
+      <View style={styles.skeletonSummary}>
+        <View style={styles.skeletonSummaryHeader} />
+        {[1, 2, 3].map((item) => (
+          <View key={item} style={styles.skeletonSummaryRow} />
+        ))}
+        <View style={styles.skeletonTotalRow} />
+      </View>
+      <View style={styles.skeletonButton} />
+    </View>
+  )
+})
+
+// Memoized Cart Item Component to prevent unnecessary re-renders
+const CartItem = memo(({
+  item,
+  onIncrease,
+  onDecrease,
+  onToggle,
+  onRemove
+}) => {
+  const usdToInr = useCallback((usd) => usd * 83, [])
+
+  return (
+    <View style={[
+      styles.cartItem,
+      !item.selected && styles.unselectedItem
+    ]}>
+      <TouchableOpacity
+        style={[
+          styles.checkBox,
+          item.selected && styles.checkedBox
+        ]}
+        onPress={() => onToggle(item.id)}
+      >
+        {item.selected && <CheckIcon2 width={s(12)} height={s(12)} />}
+      </TouchableOpacity>
+
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: item.image }}
+          style={styles.productImage}
+          resizeMode='contain'
+        />
+      </View>
+
+      <View style={styles.itemInfo}>
+        <Text style={[
+          styles.itemName,
+          !item.selected && styles.unselectedText
+        ]} numberOfLines={2}>
+          {item.name}
+        </Text>
+        <Text style={[
+          styles.itemPrice,
+          !item.selected && styles.unselectedText
+        ]}>
+          ₹{usdToInr(item.price).toFixed(0)}
+        </Text>
+
+        <View style={styles.controlsContainer}>
+          <View style={styles.quantityControls}>
+            <TouchableOpacity
+              style={[styles.circle, !item.selected && styles.disabledCircle]}
+              onPress={() => onDecrease(item.id)}
+              disabled={!item.selected}
+            >
+              <MinusIcon
+                width={s(10)}
+                height={s(10)}
+                color={!item.selected ? '#ccc' : BRAND.muted}
+              />
+            </TouchableOpacity>
+
+            <Text style={[
+              styles.quantityText,
+              !item.selected && styles.unselectedText
+            ]}>
+              {item.quantity}
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.circle, !item.selected && styles.disabledCircle]}
+              onPress={() => onIncrease(item.id)}
+              disabled={!item.selected}
+            >
+              <PlusIcon
+                width={s(10)}
+                height={s(10)}
+                color={!item.selected ? '#ccc' : BRAND.muted}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => onRemove(item.id)}
+            style={styles.deleteButton}
+          >
+            <DeleteIcon width={s(25)} height={s(25)} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  )
+})
+
 const MyOrder = () => {
-  // Static data for cart items
   const navigation = useNavigation()
   const [cartItems, setCartItems] = useState([
     {
@@ -46,30 +170,31 @@ const MyOrder = () => {
       selected: true
     }
   ])
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Function to increase quantity
-  const increaseQuantity = (id) => {
-    setCartItems(cartItems.map(item =>
+  // Memoized USD to INR conversion
+  const usdToInr = useCallback((usd) => usd * 83, [])
+
+  // Memoized cart operations
+  const increaseQuantity = useCallback((id) => {
+    setCartItems(prev => prev.map(item =>
       item.id === id ? { ...item, quantity: item.quantity + 1 } : item
     ))
-  }
+  }, [])
 
-  // Function to decrease quantity
-  const decreaseQuantity = (id) => {
-    setCartItems(cartItems.map(item =>
+  const decreaseQuantity = useCallback((id) => {
+    setCartItems(prev => prev.map(item =>
       item.id === id && item.quantity > 1 ? { ...item, quantity: item.quantity - 1 } : item
     ))
-  }
+  }, [])
 
-  // Function to toggle checkbox selection
-  const toggleCheckbox = (id) => {
-    setCartItems(cartItems.map(item =>
+  const toggleCheckbox = useCallback((id) => {
+    setCartItems(prev => prev.map(item =>
       item.id === id ? { ...item, selected: !item.selected } : item
     ))
-  }
+  }, [])
 
-  // Function to remove item from cart
-  const removeItem = (id) => {
+  const removeItem = useCallback((id) => {
     Alert.alert(
       'Remove Item',
       'Are you sure you want to remove this item from your cart?',
@@ -82,50 +207,58 @@ const MyOrder = () => {
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            setCartItems(cartItems.filter(item => item.id !== id))
+            setCartItems(prev => prev.filter(item => item.id !== id))
           }
         }
       ]
     )
-  }
+  }, [])
 
-  // Function to handle order now
-  // In MyOrder component, update the handleOrderNow function:
-  const handleOrderNow = () => {
-    const selectedItems = cartItems.filter(item => item.selected)
+  // Memoized calculations
+  const { selectedItems, totalItems, subtotalInr, discountInr, totalInr } = useMemo(() => {
+    const selected = cartItems.filter(item => item.selected)
+    const totalItemsCount = selected.reduce((sum, item) => sum + item.quantity, 0)
+    const subtotal = selected.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    const discount = 4.5
+    const deliveryFee = selected.length > 0 ? 0 : 0
+    const total = subtotal - discount + deliveryFee
 
+    return {
+      selectedItems: selected,
+      totalItems: totalItemsCount,
+      subtotalInr: usdToInr(subtotal),
+      discountInr: usdToInr(discount),
+      totalInr: usdToInr(total)
+    }
+  }, [cartItems, usdToInr])
+
+  // Memoized order handler
+  const handleOrderNow = useCallback(() => {
     if (selectedItems.length === 0) {
       Alert.alert('No Items Selected', 'Please select at least one item to order.')
       return
     }
 
-    // Navigate to OrderDetails with all necessary data
-    navigation.navigate('OrderDetails', {
-      cartItems: selectedItems,
-      totalInr: totalInr.toFixed(0),
-      subtotalInr: subtotalInr.toFixed(0),
-      discountInr: discountInr.toFixed(0),
-      totalItems: totalItems
-    })
+    setIsLoading(true)
+    // Simulate API call
+    setTimeout(() => {
+      navigation.navigate('OrderDetails', {
+        cartItems: selectedItems,
+        totalInr: totalInr.toFixed(0),
+        subtotalInr: subtotalInr.toFixed(0),
+        discountInr: discountInr.toFixed(0),
+        totalItems: totalItems
+      })
+      setIsLoading(false)
+    }, 500)
+  }, [selectedItems, totalInr, subtotalInr, discountInr, totalItems, navigation])
+
+  // Show skeleton loader during loading state
+  if (isLoading) {
+    return <SkeletonLoader />
   }
 
-  // Convert USD to INR (approximate conversion rate)
-  const usdToInr = (usd) => usd * 83
-
-  // Calculate totals only for selected items
-  const selectedItems = cartItems.filter(item => item.selected)
-  const totalItems = selectedItems.reduce((sum, item) => sum + item.quantity, 0)
-  const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-  const discount = 4.5
-  const deliveryFee = selectedItems.length > 0 ? 0 : 0 // Free delivery
-  const total = subtotal - discount + deliveryFee
-
-  // Convert to INR
-  const subtotalInr = usdToInr(subtotal)
-  const discountInr = usdToInr(discount)
-  const totalInr = usdToInr(total)
-
-  // Render empty cart state
+  // Empty cart state
   if (cartItems.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -137,75 +270,20 @@ const MyOrder = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.cartItems} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.cartItems}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {cartItems.map((item) => (
-          <View key={item.id} style={[
-            styles.cartItem,
-            !item.selected && styles.unselectedItem
-          ]}>
-            <TouchableOpacity
-              style={[
-                styles.checkBox,
-                item.selected && styles.checkedBox
-              ]}
-              onPress={() => toggleCheckbox(item.id)}
-            >
-              {item.selected && <CheckIcon2 width={s(12)} height={s(12)} />}
-            </TouchableOpacity>
-
-            {/* Product Image */}
-            <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: item.image }}
-                style={styles.productImage}
-                resizeMode='contain'
-              />
-            </View>
-
-            {/* Product Info */}
-            <View style={styles.itemInfo}>
-              <Text style={[
-                styles.itemName,
-                !item.selected && styles.unselectedText
-              ]}>{item.name}</Text>
-              <Text style={[
-                styles.itemPrice,
-                !item.selected && styles.unselectedText
-              ]}>₹{usdToInr(item.price).toFixed(0)}</Text>
-
-              <View style={styles.controlsContainer}>
-                <View style={styles.quantityControls}>
-                  <TouchableOpacity
-                    style={styles.circle}
-                    onPress={() => decreaseQuantity(item.id)}
-                    disabled={!item.selected}
-                  >
-                    <MinusIcon width={s(10)} height={s(10)} color={!item.selected ? '#ccc' : BRAND.muted} />
-                  </TouchableOpacity>
-
-                  <Text style={[
-                    styles.quantityText,
-                    !item.selected && styles.unselectedText
-                  ]}>{item.quantity}</Text>
-
-                  <TouchableOpacity
-                    style={styles.circle}
-                    onPress={() => increaseQuantity(item.id)}
-                    disabled={!item.selected}
-                  >
-                    <PlusIcon width={s(10)} height={s(10)} color={!item.selected ? '#ccc' : BRAND.muted} />
-                  </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => removeItem(item.id)}
-                  style={styles.deleteButton}
-                >
-                  <DeleteIcon width={s(25)} height={s(25)} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+          <CartItem
+            key={item.id}
+            item={item}
+            onIncrease={increaseQuantity}
+            onDecrease={decreaseQuantity}
+            onToggle={toggleCheckbox}
+            onRemove={removeItem}
+          />
         ))}
       </ScrollView>
 
@@ -251,42 +329,44 @@ const MyOrder = () => {
   )
 }
 
-export default MyOrder
+export default memo(MyOrder)
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
+    paddingHorizontal: s(16),
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   emptyContainer: {
     flex: 1,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: s(16),
   },
   emptyText: {
-    fontSize: 20,
+    fontSize: ms(20),
     fontWeight: 'bold',
     color: '#666',
-    marginBottom: 8,
+    marginBottom: vs(8),
   },
   emptySubText: {
-    fontSize: 16,
+    fontSize: ms(16),
     color: '#999',
     textAlign: 'center',
   },
   cartItems: {
     flex: 1,
-    marginTop: 12,
   },
   cartItem: {
     flexDirection: 'row',
     backgroundColor: '#f8f8f8',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
+    padding: s(12),
+    borderRadius: s(10),
+    marginBottom: vs(10),
     borderWidth: 1,
     borderColor: '#e8e8e8',
     gap: s(10),
@@ -302,18 +382,20 @@ const styles = StyleSheet.create({
   },
   itemInfo: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   itemName: {
-    fontSize: 14,
+    fontSize: ms(14),
     fontWeight: '600',
     color: '#333',
-    marginBottom: 2,
+    marginBottom: vs(2),
+    lineHeight: ms(18),
   },
   itemPrice: {
-    fontSize: 16,
+    fontSize: ms(16),
     fontWeight: 'bold',
     color: BRAND.primary,
-    marginBottom: 8,
+    marginBottom: vs(8),
   },
   unselectedText: {
     color: '#999',
@@ -329,7 +411,7 @@ const styles = StyleSheet.create({
     gap: s(15)
   },
   quantityText: {
-    fontSize: s(16),
+    fontSize: ms(16),
     fontWeight: "600",
     color: BRAND.text,
     minWidth: s(20),
@@ -353,6 +435,9 @@ const styles = StyleSheet.create({
     height: s(25),
     borderRadius: s(50)
   },
+  disabledCircle: {
+    borderColor: '#ccc',
+  },
   checkBox: {
     width: s(20),
     height: s(20),
@@ -374,38 +459,39 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.white,
     borderWidth: 1,
     borderColor: BRAND.border,
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 16,
+    paddingHorizontal: s(16),
+    paddingVertical: vs(12),
+    borderRadius: s(10),
+    marginBottom: vs(5),
   },
   summaryHeader: {
-    fontSize: 16,
+    fontSize: ms(14),
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 12,
+    // marginBottom: vs(12),
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    // marginBottom: vs(4),
   },
   summaryText: {
-    fontSize: 14,
+    fontSize: ms(12),
     color: '#666',
   },
   summaryAmount: {
-    fontSize: 14,
+    fontSize: ms(12),
     fontWeight: '600',
     color: '#333',
   },
   freeText: {
-    fontSize: 14,
+    fontSize: ms(14),
     fontWeight: '600',
     color: '#4CAF50',
   },
   discountText: {
-    fontSize: 14,
+    fontSize: ms(14),
     fontWeight: '600',
     color: BRAND.primary,
   },
@@ -413,34 +499,133 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
-    paddingTop: 10,
+    marginTop: vs(6),
+    paddingTop: vs(10),
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
   totalText: {
-    fontSize: 16,
+    fontSize: ms(16),
     fontWeight: 'bold',
     color: '#333',
   },
   totalAmount: {
-    fontSize: 18,
+    fontSize: ms(18),
     fontWeight: 'bold',
     color: BRAND.primary,
   },
   orderButton: {
     backgroundColor: BRAND.primary,
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: vs(14),
+    borderRadius: s(10),
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: vs(10),
   },
   disabledButton: {
     backgroundColor: '#ccc',
   },
   orderButtonText: {
-    fontSize: 16,
+    fontSize: ms(16),
     fontWeight: 'bold',
     color: '#fff',
+  },
+  // Skeleton Loader Styles
+  skeletonContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingHorizontal: s(16),
+  },
+  skeletonItem: {
+    flexDirection: 'row',
+    backgroundColor: '#f8f8f8',
+    padding: s(12),
+    borderRadius: s(10),
+    marginBottom: vs(10),
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+    gap: s(10),
+    alignItems: 'center'
+  },
+  skeletonCheckbox: {
+    width: s(20),
+    height: s(20),
+    borderRadius: s(3),
+    backgroundColor: '#e0e0e0',
+  },
+  skeletonImage: {
+    width: s(80),
+    height: s(80),
+    borderRadius: s(12),
+    backgroundColor: '#e0e0e0',
+  },
+  skeletonContent: {
+    flex: 1,
+    gap: vs(8),
+  },
+  skeletonText: {
+    height: ms(16),
+    backgroundColor: '#e0e0e0',
+    borderRadius: s(4),
+    width: '70%',
+  },
+  skeletonControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(15),
+  },
+  skeletonCircle: {
+    width: s(25),
+    height: s(25),
+    borderRadius: s(50),
+    backgroundColor: '#e0e0e0',
+  },
+  skeletonQuantity: {
+    width: s(20),
+    height: ms(16),
+    backgroundColor: '#e0e0e0',
+    borderRadius: s(4),
+  },
+  skeletonDelete: {
+    width: s(25),
+    height: s(25),
+    borderRadius: s(4),
+    backgroundColor: '#e0e0e0',
+    marginLeft: 'auto',
+  },
+  skeletonSummary: {
+    backgroundColor: BRAND.white,
+    borderWidth: 1,
+    borderColor: BRAND.border,
+    paddingHorizontal: s(16),
+    paddingVertical: vs(12),
+    borderRadius: s(10),
+    marginBottom: vs(5),
+    gap: vs(8),
+  },
+  skeletonSummaryHeader: {
+    height: ms(14),
+    backgroundColor: '#e0e0e0',
+    borderRadius: s(4),
+    width: '40%',
+    marginBottom: vs(4),
+  },
+  skeletonSummaryRow: {
+    height: ms(12),
+    backgroundColor: '#e0e0e0',
+    borderRadius: s(4),
+    width: '100%',
+  },
+  skeletonTotalRow: {
+    height: ms(16),
+    backgroundColor: '#e0e0e0',
+    borderRadius: s(4),
+    width: '100%',
+    marginTop: vs(6),
+  },
+  skeletonButton: {
+    height: vs(50),
+    backgroundColor: '#e0e0e0',
+    borderRadius: s(10),
+    marginBottom: vs(10),
   },
 })

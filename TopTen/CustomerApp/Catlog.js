@@ -13,97 +13,162 @@ import {
 import React, { useEffect, useState, useRef } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { s, vs, ms, mvs } from 'react-native-size-matters'
-import { useRoute } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import { useDispatch, useSelector } from 'react-redux'
 import { clearGroupProducts, fetchProductsByGroup } from '../../store/slices/userSlice'
 import BRAND from '../../src/constant/color'
 import { BASE_URL } from '../../config'
 
-// Shimmer Effect Component
-const ShimmerEffect = () => {
-    const shimmerAnim = useRef(new Animated.Value(0)).current;
+// Wave Effect Component
+const WaveEffect = () => {
+    const waveAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const animate = () => {
-            shimmerAnim.setValue(0);
-            Animated.timing(shimmerAnim, {
+        Animated.loop(
+            Animated.timing(waveAnim, {
                 toValue: 1,
-                duration: 1000,
+                duration: 2000,
                 useNativeDriver: true,
-            }).start(() => animate());
-        };
-        animate();
+            })
+        ).start();
     }, []);
 
-    const translateX = shimmerAnim.interpolate({
+    const translateX = waveAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-200, 200]
+        outputRange: [-100, 100]
     });
 
     return (
         <Animated.View
             style={[
-                styles.shimmerOverlay,
+                styles.waveOverlay,
                 {
-                    transform: [{ translateX }],
+                    transform: [
+                        { translateX },
+                        { skewX: '-20deg' }
+                    ],
                 },
             ]}
         />
     );
 };
 
-// Skeleton Loader Component with Shimmer
-const ProductCardSkeleton = () => (
-    <View style={styles.skeletonCard}>
-        <View style={styles.skeletonImage}>
-            <ShimmerEffect />
+// Skeleton Loader Component with Wave Effect
+const ProductCardSkeleton = () => {
+    const skeletonElements = [1, 2, 3, 4, 5]; // For staggered wave effect
+
+    return (
+        <View style={styles.skeletonCard}>
+            <View style={styles.skeletonImage}>
+                <WaveEffect />
+            </View>
+            <View style={styles.skeletonContent}>
+                <View style={styles.skeletonTitle}>
+                    <WaveEffect />
+                </View>
+                <View style={styles.skeletonSubtitle}>
+                    <WaveEffect />
+                </View>
+                <View style={styles.skeletonRating}>
+                    <WaveEffect />
+                </View>
+                <View style={styles.skeletonPrice}>
+                    <WaveEffect />
+                </View>
+                <View style={styles.skeletonButton}>
+                    <WaveEffect />
+                </View>
+            </View>
         </View>
-        <View style={styles.skeletonContent}>
-            <View style={styles.skeletonTitle}>
-                <ShimmerEffect />
-            </View>
-            <View style={styles.skeletonSubtitle}>
-                <ShimmerEffect />
-            </View>
-            <View style={styles.skeletonRating}>
-                <ShimmerEffect />
-            </View>
-            <View style={styles.skeletonPrice}>
-                <ShimmerEffect />
-            </View>
-            <View style={styles.skeletonButton}>
-                <ShimmerEffect />
+    );
+};
+
+// Alternative: Staggered Wave Effect for more dynamic look
+const StaggeredWaveSkeleton = () => {
+    const animations = useRef(
+        Array(6).fill(0).map(() => new Animated.Value(0))
+    ).current;
+
+    useEffect(() => {
+        const animate = () => {
+            const animationsArray = animations.map((anim, index) =>
+                Animated.sequence([
+                    Animated.delay(index * 150),
+                    Animated.timing(anim, {
+                        toValue: 1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(anim, {
+                        toValue: 0,
+                        duration: 800,
+                        useNativeDriver: true,
+                    })
+                ])
+            );
+
+            Animated.stagger(100, animationsArray).start(() => {
+                animations.forEach(anim => anim.setValue(0));
+                animate();
+            });
+        };
+
+        animate();
+    }, []);
+
+    return (
+        <View style={styles.skeletonCard}>
+            <Animated.View style={[styles.skeletonImage, { opacity: animations[0] }]} />
+            <View style={styles.skeletonContent}>
+                <Animated.View style={[styles.skeletonTitle, { opacity: animations[1] }]} />
+                <Animated.View style={[styles.skeletonSubtitle, { opacity: animations[2] }]} />
+                <Animated.View style={[styles.skeletonRating, { opacity: animations[3] }]} />
+                <Animated.View style={[styles.skeletonPrice, { opacity: animations[4] }]} />
+                <Animated.View style={[styles.skeletonButton, { opacity: animations[5] }]} />
             </View>
         </View>
-    </View>
-);
+    );
+};
 
 const Catlog = () => {
     const accessToken = useSelector(state => state?.auth?.accessToken)
     const route = useRoute();
     const groupName = route?.params?.title
     const dispatch = useDispatch()
+    const navigation = useNavigation();
 
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [error, setError] = useState(null)
+    const [page, setPage] = useState(1)
+    const [hasMore, setHasMore] = useState(true)
+    const [isRefreshing, setIsRefreshing] = useState(false)
 
-    const fetchData = async () => {
+    const ITEMS_PER_PAGE = 10
+
+    const fetchData = async (pageNum = 1, isLoadMore = false) => {
         if (groupName?.length > 0) {
-            console.log('groupName:', groupName)
-            const page = 1;
-            const length = 10;
             try {
-                setLoading(true)
-                setError(null)
+                if (isLoadMore) {
+                    setLoadingMore(true)
+                } else {
+                    if (pageNum === 1) {
+                        setLoading(true)
+                    }
+                    setError(null)
+                }
 
-                const response = await fetch(`${BASE_URL}/prod/get_group/products?group_name=${groupName}&page=${page}&length=${length}`, {
-                    method: "GET",
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        "Content-Type": "application/json",
-                    },
-                });
+                const response = await fetch(
+                    `${BASE_URL}/prod/get_group/products?group_name=${groupName}&page=${pageNum}&length=${ITEMS_PER_PAGE}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            "Content-Type": "application/json",
+                        },
+                    }
+                );
 
                 console.log("response status:", response.status)
 
@@ -113,28 +178,67 @@ const Catlog = () => {
                 }
 
                 const data = await response.json();
-                console.log(`Products for group ${groupName}:`, data);
+                console.log(`Products for group ${groupName}, page ${pageNum}:`, data);
 
                 // Set the products from API response
                 if (data.data && Array.isArray(data.data)) {
-                    setProducts(data.data)
+                    if (isLoadMore) {
+                        // Append new products for lazy loading
+                        setProducts(prevProducts => [...prevProducts, ...data.data])
+                    } else {
+                        // Replace products for initial load or refresh
+                        setProducts(data.data)
+                    }
+
+                    // Check if there are more products to load
+                    const totalRecords = data.recordsTotal || 0
+                    const currentCount = isLoadMore ? products.length + data.data.length : data.data.length
+                    setHasMore(currentCount < totalRecords)
+
                 } else {
-                    setProducts([])
+                    if (!isLoadMore) {
+                        setProducts([])
+                    }
+                    setHasMore(false)
                 }
+
+                setPage(pageNum + 1)
             }
             catch (e) {
                 console.log('error:', e)
                 setError(e.message)
             }
             finally {
-                setLoading(false)
+                if (isLoadMore) {
+                    setLoadingMore(false)
+                } else {
+                    setLoading(false)
+                }
+                setIsRefreshing(false)
             }
         }
     }
 
+    // Initial load
     useEffect(() => {
-        fetchData()
+        fetchData(1, false)
     }, [groupName])
+
+    // Load more data when reaching end of list
+    const loadMoreData = () => {
+        if (!loadingMore && hasMore && !loading) {
+            console.log('Loading more products...', page)
+            fetchData(page, true)
+        }
+    }
+
+    // Pull to refresh
+    const handleRefresh = () => {
+        setIsRefreshing(true)
+        setPage(1)
+        setHasMore(true)
+        fetchData(1, false)
+    }
 
     // Format price to Indian Rupees
     const formatPrice = (price) => {
@@ -149,10 +253,24 @@ const Catlog = () => {
         return `${Math.round(discount)}% off`;
     }
 
-    // Render skeleton loader with shimmer
+    // Render skeleton loader with wave effect
     const renderSkeletonItem = () => (
         <ProductCardSkeleton />
+        // Or use StaggeredWaveSkeleton for different effect:
+        // <StaggeredWaveSkeleton />
     );
+
+    // Render load more footer
+    const renderFooter = () => {
+        if (!loadingMore) return null;
+
+        return (
+            <View style={styles.footerContainer}>
+                <ActivityIndicator size="small" color={BRAND.primary} />
+                <Text style={styles.footerText}>Loading more products...</Text>
+            </View>
+        );
+    };
 
     // Render each product item with API data
     const renderProductItem = ({ item }) => {
@@ -160,7 +278,10 @@ const Catlog = () => {
         const productImage = item.product_image?.[0]?.image_url;
 
         return (
-            <TouchableOpacity style={styles.productCard}>
+            <TouchableOpacity style={styles.productCard} onPress={() => {
+                console.log(item)
+                navigation.navigate('AboutProductScreen',{item})
+            }}>
                 {/* Product Image */}
                 <View style={styles.imageContainer}>
                     <Image
@@ -235,8 +356,8 @@ const Catlog = () => {
         <SafeAreaView style={styles.container}>
             <StatusBar backgroundColor={BRAND.white} />
 
-            {/* Products Grid with Shimmer Skeleton Loader */}
-            {loading ? (
+            {/* Products Grid with Wave Effect Skeleton Loader */}
+            {loading && !isRefreshing ? (
                 <FlatList
                     data={skeletonData}
                     renderItem={renderSkeletonItem}
@@ -249,14 +370,14 @@ const Catlog = () => {
             ) : error ? (
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>Error: {error}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+                    <TouchableOpacity style={styles.retryButton} onPress={() => fetchData(1, false)}>
                         <Text style={styles.retryButtonText}>Retry</Text>
                     </TouchableOpacity>
                 </View>
             ) : products.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyText}>No products found</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+                    <TouchableOpacity style={styles.retryButton} onPress={() => fetchData(1, false)}>
                         <Text style={styles.retryButtonText}>Retry</Text>
                     </TouchableOpacity>
                 </View>
@@ -264,13 +385,21 @@ const Catlog = () => {
                 <FlatList
                     data={products}
                     renderItem={renderProductItem}
-                    keyExtractor={(item) => item.id.toString()}
+                    keyExtractor={(item, index) => `${item.id}-${index}`}
                     numColumns={2}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.flatListContent}
                     columnWrapperStyle={styles.columnWrapper}
-                    refreshing={loading}
-                    onRefresh={fetchData}
+                    refreshing={isRefreshing}
+                    onRefresh={handleRefresh}
+                    onEndReached={loadMoreData}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={renderFooter}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No products found</Text>
+                        </View>
+                    }
                 />
             )}
         </SafeAreaView>
@@ -323,7 +452,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: s(8),
         left: s(8),
-        backgroundColor: '#ff3f6c',
+        backgroundColor: BRAND.orange,
         paddingHorizontal: s(6),
         paddingVertical: s(2),
         borderRadius: s(4),
@@ -399,7 +528,7 @@ const styles = StyleSheet.create({
         color: '#ff3f6c',
     },
     addToCartButton: {
-        backgroundColor: '#ff3f6c',
+        backgroundColor: BRAND.primary,
         paddingVertical: s(8),
         borderRadius: s(4),
         alignItems: 'center',
@@ -410,7 +539,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 
-    // Skeleton Loader Styles with Shimmer
+    // Skeleton Loader Styles with Wave Effect
     skeletonCard: {
         width: CARD_WIDTH,
         backgroundColor: '#e0e0e0',
@@ -426,7 +555,7 @@ const styles = StyleSheet.create({
     skeletonImage: {
         width: '100%',
         height: vs(150),
-        backgroundColor: '#c0c0c0',
+        backgroundColor: '#c8c8c8',
         overflow: 'hidden',
         position: 'relative',
     },
@@ -435,7 +564,7 @@ const styles = StyleSheet.create({
     },
     skeletonTitle: {
         height: s(16),
-        backgroundColor: '#c0c0c0',
+        backgroundColor: '#c8c8c8',
         borderRadius: s(4),
         marginBottom: s(8),
         overflow: 'hidden',
@@ -443,7 +572,7 @@ const styles = StyleSheet.create({
     },
     skeletonSubtitle: {
         height: s(12),
-        backgroundColor: '#c0c0c0',
+        backgroundColor: '#c8c8c8',
         borderRadius: s(4),
         marginBottom: s(8),
         width: '60%',
@@ -452,7 +581,7 @@ const styles = StyleSheet.create({
     },
     skeletonRating: {
         height: s(20),
-        backgroundColor: '#c0c0c0',
+        backgroundColor: '#c8c8c8',
         borderRadius: s(4),
         marginBottom: s(8),
         width: '40%',
@@ -461,7 +590,7 @@ const styles = StyleSheet.create({
     },
     skeletonPrice: {
         height: s(14),
-        backgroundColor: '#c0c0c0',
+        backgroundColor: '#c8c8c8',
         borderRadius: s(4),
         marginBottom: s(12),
         width: '50%',
@@ -470,21 +599,34 @@ const styles = StyleSheet.create({
     },
     skeletonButton: {
         height: s(32),
-        backgroundColor: '#c0c0c0',
+        backgroundColor: '#c8c8c8',
         borderRadius: s(4),
         overflow: 'hidden',
         position: 'relative',
     },
 
-    // Shimmer Effect Styles
-    shimmerOverlay: {
+    // Wave Effect Styles
+    waveOverlay: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.4)',
-        transform: [{ skewX: '-20deg' }],
+        width: '50%',
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    },
+
+    // Lazy Loading Footer
+    footerContainer: {
+        padding: s(20),
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: s(10),
+    },
+    footerText: {
+        fontSize: s(14),
+        color: BRAND.muted,
     },
 
     errorContainer: {

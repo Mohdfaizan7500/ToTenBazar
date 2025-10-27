@@ -1,5 +1,5 @@
 import { StatusBar, StyleSheet, Text, View, ScrollView, Dimensions, Animated, Image, TouchableOpacity } from 'react-native'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useRoute } from '@react-navigation/native'
 import BRAND from '../../../src/constant/color';
 import { s, vs } from 'react-native-size-matters';
@@ -8,7 +8,6 @@ import { AddToCartIcon, MinusIcon, PlusIcon } from '../../../src/SVGicons/icon';
 const { width: screenWidth } = Dimensions.get('window');
 
 const AboutProductScreen = () => {
-    // ALL HOOKS MUST BE CALLED AT THE TOP LEVEL, BEFORE ANY CONDITIONAL LOGIC
     const route = useRoute();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [quantity, setQuantity] = useState(1);
@@ -16,107 +15,220 @@ const AboutProductScreen = () => {
 
     const scrollViewRef = useRef(null);
     const scrollX = useRef(new Animated.Value(0)).current;
+    const autoScrollTimerRef = useRef(null);
+    const scrollEndTimerRef = useRef(null);
 
-    // Sample images - replace with your actual images
-    const images = [
-        'https://images-prod.healthline.com/hlcmsresource/images/AN_images/tomatoes-1296x728-feature.jpg',
-        'https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcS3DRPxLp5XH4U1fUPLQwkWQn7fUd368gb2lUCx9qEKuUb5LhktbVpEcMTg_3EP_rx99pWkU_cdJ_ZETZlfswgCjwu5DhipxhHqNXYkPJ0',
-        'https://seedarmory.com/cdn/shop/products/plant_f32aa815-1d3b-4c20-a931-933ac9cc8a2c.jpg?v=1705893776&width=1445',
-    ];
+    // Extract product data from route params
+    const productData = route.params?.item;
 
-    // Product data
-    const product = {
-        name: 'Fresh Tomato (Tamatar)',
-        category: 'Vegetables',
-        currentPrice: 45,
-        originalPrice: 65,
-        unit: 'kg',
-        description: 'The tomato is a fruit, commonly red in color, though yellow, orange, green, and other varieties are also grown. In India, it is widely cultivated and used in everyday cooking. All cultivated tomatoes are domesticated forms of the wild species Solanum lycopersicum, originally native to western South America, but now an integral part of Indian agriculture and cuisine. The tomato is a fruit, commonly red in color, though yellow, orange, green, and other varieties are also grown. In India, it is widely cultivated and used in everyday cooking. All cultivated tomatoes are domesticated forms of the wild species Solanum lycopersicum, originally native to western South America, but now an integral part of Indian agriculture and cuisine.'
-    };
+    // Memoize product data to prevent recreation
+    const product = useMemo(() => {
+        if (!productData) return null;
 
-    // Check if route.params exists safely
+        return {
+            id: productData.id,
+            name: productData.product_name,
+            category: productData.group_name_display,
+            currentPrice: productData.product_selling_price,
+            originalPrice: productData.product_original_price,
+            unit: productData.product_unit,
+            discountPercentage: productData.discount_percentage,
+            description: productData.description || `This is ${productData.product_name}, a premium product in the ${productData.group_name_display} category. Available at an amazing discounted price.`
+        };
+    }, [productData]);
+
+    // Memoize images array from product_image
+    const images = useMemo(() => {
+        if (!productData?.product_image) return [];
+
+        return productData.product_image.map(img =>
+            typeof img === 'string' ? img : img.image_url || img.image
+        ).filter(Boolean);
+    }, [productData]);
+
+    // Single optimized useEffect for route params
     useEffect(() => {
-        if (route.params) {
-            console.log('Route params:', route.params);
+        if (productData) {
+            console.log("Product data on about product screen:", productData);
         }
-    }, [route.params]);
+    }, [productData]);
 
+    // Cleanup all timers and animations when component unmounts
     useEffect(() => {
-        let timer;
-        if (isAutoScrollEnabled) {
-            timer = setTimeout(() => {
-                let nextIndex = currentIndex + 1;
-                if (nextIndex >= images.length) {
-                    nextIndex = 0;
-                }
-
-                scrollViewRef.current?.scrollTo({
-                    x: nextIndex * screenWidth,
-                    animated: true
-                });
-                setCurrentIndex(nextIndex);
-            }, 3000);
-        }
-
-        return () => clearTimeout(timer);
-    }, [currentIndex, isAutoScrollEnabled, images.length]);
-
-    const onScroll = Animated.event(
-        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-        {
-            useNativeDriver: false,
-            listener: (event) => {
-                const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
-                setCurrentIndex(newIndex);
+        return () => {
+            // Clear all timers
+            if (autoScrollTimerRef.current) {
+                clearTimeout(autoScrollTimerRef.current);
+                autoScrollTimerRef.current = null;
             }
-        }
+            
+            if (scrollEndTimerRef.current) {
+                clearTimeout(scrollEndTimerRef.current);
+                scrollEndTimerRef.current = null;
+            }
+
+            // Stop any ongoing animations
+            scrollX.stopAnimation();
+            
+            // Reset refs
+            scrollViewRef.current = null;
+            
+            // You can also reset states here if needed, but they'll be garbage collected
+            // when component unmounts. This is more for cleanup of active resources.
+        };
+    }, []);
+
+    // Optimized auto-scroll with cleanup
+    useEffect(() => {
+        if (!isAutoScrollEnabled || images.length <= 1) return;
+
+        autoScrollTimerRef.current = setTimeout(() => {
+            let nextIndex = currentIndex + 1;
+            if (nextIndex >= images.length) {
+                nextIndex = 0;
+            }
+
+            scrollViewRef.current?.scrollTo({
+                x: nextIndex * screenWidth,
+                animated: true
+            });
+            setCurrentIndex(nextIndex);
+        }, 3000);
+
+        return () => {
+            if (autoScrollTimerRef.current) {
+                clearTimeout(autoScrollTimerRef.current);
+                autoScrollTimerRef.current = null;
+            }
+        };
+    }, [currentIndex, isAutoScrollEnabled, images.length, scrollX]);
+
+    // Memoized scroll handler
+    const onScroll = useMemo(() =>
+        Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            {
+                useNativeDriver: false,
+                listener: (event) => {
+                    const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+                    setCurrentIndex(newIndex);
+                }
+            }
+        ),
+        [scrollX]
     );
 
-    // Handle scroll begin to pause auto-scroll
-    const handleScrollBegin = () => {
+    // Memoized event handlers
+    const handleScrollBegin = useCallback(() => {
         setIsAutoScrollEnabled(false);
-    };
-
-    // Handle scroll end to resume auto-scroll after delay
-    const handleScrollEnd = () => {
-        setTimeout(() => setIsAutoScrollEnabled(true), 5000);
-    };
-
-    // Increase quantity function
-    const handleIncreaseQuantity = () => {
-        setQuantity(prevQuantity => prevQuantity + 1);
-    };
-
-    // Decrease quantity function
-    const handleDecreaseQuantity = () => {
-        setQuantity(prevQuantity => prevQuantity > 1 ? prevQuantity - 1 : 1);
-    };
-
-    // Add to cart function
-    const handleAddToCart = () => {
-        // Calculate total price
-        const totalPrice = product.currentPrice * quantity;
         
-        // Create cart item object
+        // Clear any pending auto-scroll timer
+        if (autoScrollTimerRef.current) {
+            clearTimeout(autoScrollTimerRef.current);
+            autoScrollTimerRef.current = null;
+        }
+    }, []);
+
+    const handleScrollEnd = useCallback(() => {
+        // Clear any existing timer
+        if (scrollEndTimerRef.current) {
+            clearTimeout(scrollEndTimerRef.current);
+        }
+        
+        // Set new timer to resume auto-scroll
+        scrollEndTimerRef.current = setTimeout(() => {
+            setIsAutoScrollEnabled(true);
+            scrollEndTimerRef.current = null;
+        }, 5000);
+    }, []);
+
+    const handleIncreaseQuantity = useCallback(() => {
+        setQuantity(prevQuantity => prevQuantity + 1);
+    }, []);
+
+    const handleDecreaseQuantity = useCallback(() => {
+        setQuantity(prevQuantity => prevQuantity > 1 ? prevQuantity - 1 : 1);
+    }, []);
+
+    const handleAddToCart = useCallback(() => {
+        if (!product) return;
+
+        const totalPrice = product.currentPrice * quantity;
         const cartItem = {
             product: product,
             quantity: quantity,
             totalPrice: totalPrice
         };
-        
+
         console.log('Added to cart:', cartItem);
-        
-        // Here you can add to your cart state management (Redux, Context, etc.)
-        // For example: dispatch(addToCart(cartItem));
-        
-        // Show success message
         alert(`Added ${quantity} ${product.unit} of ${product.name} to cart!`);
+    }, [product, quantity]);
+
+    // Memoize pager dots to prevent recalculation on every render
+    const pagerDots = useMemo(() =>
+        images.map((_, index) => {
+            const inputRange = [
+                (index - 1) * screenWidth,
+                index * screenWidth,
+                (index + 1) * screenWidth,
+            ];
+
+            const dotWidth = scrollX.interpolate({
+                inputRange,
+                outputRange: [8, 20, 8],
+                extrapolate: 'clamp',
+            });
+
+            const opacity = scrollX.interpolate({
+                inputRange,
+                outputRange: [0.3, 1, 0.3],
+                extrapolate: 'clamp',
+            });
+
+            return (
+                <Animated.View
+                    key={index}
+                    style={[
+                        styles.pagerDot,
+                        {
+                            width: dotWidth,
+                            opacity: opacity,
+                        },
+                    ]}
+                />
+            );
+        }),
+        [images.length, scrollX]
+    );
+
+    // Memoize carousel images
+    const carouselImages = useMemo(() =>
+        images.map((image, index) => (
+            <View key={index} style={styles.imageWrapper}>
+                <Image
+                    source={{ uri: image }}
+                    style={styles.image}
+                    resizeMode="cover"
+                    defaultSource={require('../../../src/images/user.png')}
+                />
+            </View>
+        )),
+        [images]
+    );
+
+    // Format price with commas for better readability
+    const formatPrice = (price) => {
+        return price?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || '0';
     };
 
-    // If you need conditional rendering, do it AFTER all hooks
-    // if (!route.params) {
-    //     return <View><Text>Loading...</Text></View>;
-    // }
+    // Show loading if no product data
+    if (!product) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text>Loading product...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -124,62 +236,33 @@ const AboutProductScreen = () => {
 
             {/* Image Carousel */}
             <View style={styles.imageContainer}>
-                <ScrollView
-                    ref={scrollViewRef}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={onScroll}
-                    onScrollBeginDrag={handleScrollBegin}
-                    onMomentumScrollEnd={handleScrollEnd}
-                    scrollEventThrottle={16}
-                >
-                    {images.map((image, index) => (
-                        <View key={index} style={styles.imageWrapper}>
-                            <Image
-                                source={{ uri: image }}
-                                style={styles.image}
-                                resizeMode="cover"
-                            />
-                        </View>
-                    ))}
-                </ScrollView>
+                {images.length > 0 ? (
+                    <>
+                        <ScrollView
+                            ref={scrollViewRef}
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            onScroll={onScroll}
+                            onScrollBeginDrag={handleScrollBegin}
+                            onMomentumScrollEnd={handleScrollEnd}
+                            scrollEventThrottle={16}
+                        >
+                            {carouselImages}
+                        </ScrollView>
 
-                {/* Pager Indicator */}
-                <View style={styles.pagerContainer}>
-                    {images.map((_, index) => {
-                        const inputRange = [
-                            (index - 1) * screenWidth,
-                            index * screenWidth,
-                            (index + 1) * screenWidth,
-                        ];
-
-                        const dotWidth = scrollX.interpolate({
-                            inputRange,
-                            outputRange: [8, 20, 8],
-                            extrapolate: 'clamp',
-                        });
-
-                        const opacity = scrollX.interpolate({
-                            inputRange,
-                            outputRange: [0.3, 1, 0.3],
-                            extrapolate: 'clamp',
-                        });
-
-                        return (
-                            <Animated.View
-                                key={index}
-                                style={[
-                                    styles.pagerDot,
-                                    {
-                                        width: dotWidth,
-                                        opacity: opacity,
-                                    },
-                                ]}
-                            />
-                        );
-                    })}
-                </View>
+                        {/* Pager Indicator - Only show if multiple images */}
+                        {images.length > 1 && (
+                            <View style={styles.pagerContainer}>
+                                {pagerDots}
+                            </View>
+                        )}
+                    </>
+                ) : (
+                    <View style={styles.placeholderImage}>
+                        <Text>No Image Available</Text>
+                    </View>
+                )}
             </View>
 
             {/* Content below images */}
@@ -189,29 +272,39 @@ const AboutProductScreen = () => {
                         <Text style={styles.type}>{product.category}</Text>
                     </View>
                     <Text style={styles.title}>{product.name}</Text>
+
+                    {/* Discount Badge */}
+                    {product.discountPercentage > 0 && (
+                        <View style={styles.discountBadge}>
+                            <Text style={styles.discountText}>
+                                {product.discountPercentage}% OFF
+                            </Text>
+                        </View>
+                    )}
+
                     <Text style={styles.price}>
-                        ₹ {product.currentPrice}
-                        <Text style={{
-                            fontSize: s(16),
-                            fontWeight: "400",
-                            color: BRAND.muted
-                        }}> / {product.unit}  ₹
-                            <Text style={{ textDecorationLine: "line-through" }}> {product.originalPrice}</Text>
+                        ₹ {formatPrice(product.currentPrice)}
+                        <Text style={styles.originalPrice}>
+                            {' '}/ {product.unit}  ₹
+                            <Text style={styles.discountedPrice}> {formatPrice(product.originalPrice)}</Text>
                         </Text>
                     </Text>
                     <Text style={styles.descriptionText}>Description</Text>
                 </View>
                 <View style={styles.line} />
                 <View style={{ height: "45%" }}>
-                    <ScrollView contentContainerStyle={{ paddingVertical: s(20), paddingHorizontal: s(20) }}>
+                    <ScrollView
+                        contentContainerStyle={styles.descriptionContainer}
+                        showsVerticalScrollIndicator={false}
+                    >
                         <Text style={styles.description}>
                             {product.description}
                         </Text>
                     </ScrollView>
                 </View>
                 <View style={styles.ButtonContainer}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: s(15) }}>
-                        <TouchableOpacity 
+                    <View style={styles.quantityContainer}>
+                        <TouchableOpacity
                             style={[styles.circle, quantity === 1 && styles.disabledCircle]}
                             onPress={handleDecreaseQuantity}
                             disabled={quantity === 1}
@@ -219,14 +312,14 @@ const AboutProductScreen = () => {
                             <MinusIcon width={s(15)} height={s(15)} />
                         </TouchableOpacity>
                         <Text style={styles.itemText}>{quantity}</Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.circle}
                             onPress={handleIncreaseQuantity}
                         >
                             <PlusIcon width={s(15)} height={s(15)} />
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.addTocartButton}
                         onPress={handleAddToCart}
                     >
@@ -239,11 +332,17 @@ const AboutProductScreen = () => {
     )
 }
 
-export default AboutProductScreen
+export default React.memo(AboutProductScreen)
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: BRAND.bg
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: BRAND.bg
     },
     imageContainer: {
@@ -258,6 +357,13 @@ const styles = StyleSheet.create({
     image: {
         width: "100%",
         height: "100%",
+    },
+    placeholderImage: {
+        width: "100%",
+        height: "100%",
+        backgroundColor: BRAND.muted,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     pagerContainer: {
         position: 'absolute',
@@ -294,6 +400,7 @@ const styles = StyleSheet.create({
     description: {
         fontSize: s(14),
         color: '#666',
+        lineHeight: vs(20),
     },
     type: {
         color: BRAND.primary,
@@ -314,6 +421,27 @@ const styles = StyleSheet.create({
         color: BRAND.primary,
         lineHeight: vs(30)
     },
+    originalPrice: {
+        fontSize: s(16),
+        fontWeight: "400",
+        color: BRAND.muted
+    },
+    discountedPrice: {
+        textDecorationLine: "line-through"
+    },
+    discountBadge: {
+        backgroundColor: BRAND.orange,
+        paddingHorizontal: s(8),
+        paddingVertical: s(4),
+        borderRadius: s(4),
+        alignSelf: 'flex-start',
+        marginTop: s(5),
+    },
+    discountText: {
+        color: BRAND.white,
+        fontSize: s(12),
+        fontWeight: 'bold',
+    },
     descriptionText: {
         fontSize: s(16),
         color: BRAND.orange,
@@ -324,6 +452,10 @@ const styles = StyleSheet.create({
         width: '100%',
         borderBottomWidth: s(0.5),
         borderColor: BRAND.muted
+    },
+    descriptionContainer: {
+        paddingVertical: s(20),
+        paddingHorizontal: s(20)
     },
     ButtonContainer: {
         width: "100%",
@@ -336,6 +468,11 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: s(15)
+    },
+    quantityContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: s(15)
     },
     addTocartButton: {
         backgroundColor: BRAND.primary,

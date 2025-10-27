@@ -19,9 +19,12 @@ import OrderDetails from '../CustomerApp/ProfileScreens/OrderDetails';
 import OrderConfirem from '../CustomerApp/ProfileScreens/OrderConfirem';
 import Offers from '../CustomerApp/ProfileScreens/Offers';
 import Catlog from '../CustomerApp/Catlog';
+import { useSelector } from 'react-redux';
 const Stack = createStackNavigator()
 
 const CustomerAppNav = () => {
+
+    const Theme = useSelector(state => state?.auth?.Theme)
 
     // Common header options for profile screens
     const getProfileHeaderOptions = (title, navigation) => ({
@@ -51,7 +54,11 @@ const CustomerAppNav = () => {
     })
 
     return (
-        <Stack.Navigator screenOptions={{ headerShown: true }} initialRouteName='CustomerMain'>
+        <Stack.Navigator screenOptions={{
+            headerShown: true, headerStyle: {
+                backgroundColor: "red"
+            }
+        }} initialRouteName='CustomerMain'>
             <Stack.Screen name='CustomerMain' component={CustomerMain} options={{ headerShown: false }} />
             {/* Profile Screens with Headers */}
             <Stack.Screen
@@ -112,9 +119,10 @@ const CustomerAppNav = () => {
             <Stack.Screen name='Offers' component={Offers}
                 options={({ navigation }) => getProfileHeaderOptions('Checkout', navigation)} />
             <Stack.Screen name='Catlog' component={Catlog}
-                options={({ route,navigation }) => {
+                options={({ route, navigation }) => {
                     const title = route?.params?.title || 'Catlog'
-                    return  getProfileHeaderOptions(title, navigation)} }/>
+                    return getProfileHeaderOptions(title, navigation)
+                }} />
 
         </Stack.Navigator>
     )
