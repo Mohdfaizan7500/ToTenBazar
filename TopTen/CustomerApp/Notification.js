@@ -2,9 +2,13 @@ import { StyleSheet, Text, View, ScrollView, SafeAreaView } from 'react-native'
 import React from 'react'
 import { CheckIcon, ClroseIcon2, DiscountIcon, EmailIcon, ProfileIcon2 } from '../../src/SVGicons/icon'
 import { s } from 'react-native-size-matters'
-import BRAND from '../../src/constant/color'
+import { useSelector } from 'react-redux'
+import { DARK, BRAND } from '../../src/constant/colors'
 
 const Notification = () => {
+  const Theme = useSelector(state => state.auth.Theme)
+  const colors = Theme ? DARK : BRAND
+
   const notifications = [
     {
       id: 1,
@@ -12,7 +16,7 @@ const Notification = () => {
       title: '30% Special Discount!',
       description: 'Special promotion only valid today',
       type: 'promotion',
-      icon: <DiscountIcon />
+      icon: <DiscountIcon fill={colors.text} />
     },
     {
       id: 2,
@@ -20,7 +24,7 @@ const Notification = () => {
       title: 'Your Order Has Been Taken by the Driver',
       description: 'Recently!',
       type: 'order',
-      icon: <CheckIcon/>
+      icon: <CheckIcon fill={colors.text} />
     },
     {
       id: 3,
@@ -28,7 +32,7 @@ const Notification = () => {
       title: 'Your Order Has Been Canceled',
       date: '19Jun2023',
       type: 'order_canceled',
-      icon: <ClroseIcon2/>
+      icon: <ClroseIcon2 fill={colors.text} />
     },
     {
       id: 4,
@@ -36,7 +40,7 @@ const Notification = () => {
       title: '35% Special Discount!',
       description: 'Special promotion only valid today',
       type: 'promotion',
-      icon: <EmailIcon width={s(25)} height={s(25)} fill={BRAND.orange} />
+      icon: <EmailIcon width={s(25)} height={s(25)} fill={colors.orange} />
     },
     {
       id: 5,
@@ -44,7 +48,7 @@ const Notification = () => {
       title: 'Account Setup Successful!!',
       description: 'Special promotion only valid today',
       type: 'account',
-      icon: <ProfileIcon2 fill={'#000'}/>
+      icon: <ProfileIcon2 fill={colors.text} />
     },
     {
       id: 6,
@@ -77,14 +81,97 @@ const Notification = () => {
   const groupedNotifications = groupNotificationsByTime(sortedNotifications)
 
   const getIconColor = (type) => {
-    const colors = {
-      promotion: '#4CAF50',
-      order: '#2196F3',
-      order_canceled: '#F44336',
-      account: '#9C27B0'
+    const typeColors = {
+      promotion: colors.green,
+      order: colors.blue,
+      order_canceled: colors.orange,
+      account: colors.pink
     }
-    return colors[type] || '#666'
+    return typeColors[type] || colors.muted
   }
+
+  const getIconBackgroundColor = (type) => {
+    const typeColors = {
+      promotion: `${colors.green}20`,
+      order: `${colors.blue}20`,
+      order_canceled: `${colors.orange}20`,
+      account: `${colors.pink}20`
+    }
+    return typeColors[type] || `${colors.muted}20`
+  }
+
+  // Create dynamic styles based on current theme
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    scrollView: {
+      flex: 1,
+      padding: 15,
+      backgroundColor: colors.bg,
+    },
+    timeGroup: {
+      marginBottom: 25,
+    },
+    timeGroupTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 10,
+      marginLeft: 5,
+    },
+    notificationCard: {
+      backgroundColor: colors.white,
+      padding: 15,
+      borderRadius: 10,
+      marginBottom: 10,
+      shadowColor: colors.black,
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: Theme ? 0.05 : 0.1,
+      shadowRadius: 3,
+      elevation: 2,
+      borderWidth: Theme ? 1 : 0,
+      borderColor: Theme ? colors.border : 'transparent',
+    },
+    notificationHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    iconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    iconText: {
+      fontSize: 18,
+    },
+    textContainer: {
+      flex: 1,
+    },
+    notificationTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    notificationDescription: {
+      fontSize: 14,
+      color: colors.muted,
+      marginBottom: 4,
+    },
+    notificationDate: {
+      fontSize: 12,
+      color: colors.muted,
+      fontWeight: '500',
+    },
+  })
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,7 +182,7 @@ const Notification = () => {
             {groupedNotifications[timeGroup].map((notification) => (
               <View key={notification.id} style={styles.notificationCard}>
                 <View style={styles.notificationHeader}>
-                  <View style={[styles.iconContainer, { backgroundColor: `${getIconColor(notification.type)}20` }]}>
+                  <View style={[styles.iconContainer, { backgroundColor: getIconBackgroundColor(notification.type) }]}>
                     <Text style={[styles.iconText, { color: getIconColor(notification.type) }]}>
                       {notification.icon}
                     </Text>
@@ -124,72 +211,3 @@ const Notification = () => {
 }
 
 export default Notification
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  scrollView: {
-    flex: 1,
-    padding: 15,
-  },
-  timeGroup: {
-    marginBottom: 25,
-  },
-  timeGroupTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
-    marginLeft: 5,
-  },
-  notificationCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  notificationHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  iconText: {
-    fontSize: 18,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  notificationTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  notificationDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  notificationDate: {
-    fontSize: 12,
-    color: '#888',
-    fontWeight: '500',
-  },
-})

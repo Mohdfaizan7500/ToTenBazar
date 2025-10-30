@@ -1,27 +1,22 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, StatusBar } from 'react-native'
 import React from 'react'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { s, vs } from 'react-native-size-matters'
-import BRAND from '../../../src/constant/color'
-import { AddressIcon, AddToCartIcon, OfferIcon, PaymentCheckBoxIcon, RightArrowICon } from '../../../src/SVGicons/icon'
+import { AddressIcon, OfferIcon, PaymentCheckBoxIcon, RightArrowICon } from '../../../src/SVGicons/icon'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSelector } from 'react-redux'
+import { BRAND, DARK } from '../../../src/constant/colors'
 
 const OrderDetails = () => {
     const route = useRoute()
-    const navigation = useNavigation();
+    const navigation = useNavigation()
+    const Theme = useSelector(state => state.auth.Theme)
+    const colors = Theme ? DARK : BRAND
 
-    const PlaceOrderHandle = () => {
-        navigation.replace('OrderConfirem')
-    }
-
-    // Get data passed from MyOrder screen
     const { cartItems, totalInr, subtotalInr, discountInr, totalItems } = route.params || {}
 
-    // Static data for order details (you can modify this as needed)
     const orderData = {
         id: 'ORD-12345',
-        date: '8-21',
-        status: 'Checkout',
         deliveryAddress: {
             title: 'Delhi Kirti Nagar',
             status: 'OK',
@@ -33,122 +28,119 @@ const OrderDetails = () => {
         paymentMethod: 'Pay On Delivery',
     }
 
-    // If no data passed, use empty state
-    if (!cartItems || cartItems.length === 0) {
+    if (!cartItems?.length) {
         return (
-            <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No order data available</Text>
-                <Text style={styles.emptySubText}>Please go back and select items to order</Text>
+            <View style={[styles.emptyContainer, { backgroundColor: colors.bg }]}>
+                <Text style={[styles.emptyText, { color: colors.text }]}>No order data available</Text>
+                <Text style={[styles.emptySubText, { color: colors.muted }]}>Please go back and select items to order</Text>
             </View>
         )
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-                {/* Item Details Section */}
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+            <StatusBar backgroundColor={colors.bg} barStyle={Theme ? 'light-content' : 'dark-content'} />
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: colors.bg }}>
+                
+                {/* Item Details */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Item Details</Text>
-
-                    {cartItems.map((item, index) => (
-                        <View key={item.id} style={styles.item}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Item Details</Text>
+                    {cartItems.map((item) => (
+                        <View key={item.id} style={[styles.item, { 
+                            backgroundColor: colors.white,
+                            shadowColor: colors.black,
+                            shadowOpacity: Theme ? 0.05 : 0.1 
+                        }]}>
                             <View style={styles.itemLeft}>
-                                <Image
-                                    source={{ uri: item.image }}
-                                    style={styles.itemImage}
-                                    resizeMode="contain"
-                                />
+                                <Image source={{ uri: item.image }} style={styles.itemImage} />
                                 <View style={styles.itemInfo}>
-                                    <Text style={styles.itemName}>{item.name}</Text>
-                                    <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+                                    <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
+                                    <Text style={[styles.itemQuantity, { color: colors.muted }]}>Qty: {item.quantity}</Text>
                                 </View>
                             </View>
-                            <Text style={styles.itemPrice}>₹{item.price * item.quantity}</Text>
+                            <Text style={[styles.itemPrice, { color: colors.orange }]}>₹{item.price * item.quantity}</Text>
                         </View>
                     ))}
                 </View>
 
-                {/* Delivery Address Section */}
+                {/* Delivery Address */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Delivery Address</Text>
-
-                    <View style={styles.addressCard}>
-                        <View style={styles.addressIconContainer}>
-                            <AddressIcon width={s(30)} height={s(30)} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Delivery Address</Text>
+                    <View style={[styles.addressCard, { backgroundColor: colors.white, borderColor: colors.border }]}>
+                        <View style={[styles.addressIconContainer, { backgroundColor: Theme ? colors.orangeLight : '#FE8C0033' }]}>
+                            <AddressIcon width={s(22)} height={s(22)} stroke={colors.orange} />
                         </View>
                         <View style={styles.addressContent}>
                             <View style={styles.addressHeader}>
                                 <View style={styles.addressTextContent}>
-                                    <Text style={styles.addressTitle}>{orderData.deliveryAddress.title}</Text>
-                                    <Text style={styles.addressStatus}>{orderData.deliveryAddress.status}</Text>
-                                    <Text style={styles.addressOwner}>{orderData.deliveryAddress.owner}</Text>
+                                    <Text style={[styles.addressTitle, { color: colors.text }]}>{orderData.deliveryAddress.title}</Text>
+                                    <Text style={[styles.addressStatus, { color: colors.green }]}>{orderData.deliveryAddress.status}</Text>
+                                    <Text style={[styles.addressOwner, { color: colors.text }]}>{orderData.deliveryAddress.owner}</Text>
                                 </View>
                                 <TouchableOpacity style={styles.changeButton}>
-                                    <Text style={styles.change}>Change</Text>
+                                    <Text style={[styles.change, { color: colors.orange }]}>Change</Text>
                                 </TouchableOpacity>
                             </View>
-                            <Text style={styles.addressText}>{orderData.deliveryAddress.address}</Text>
-                            <Text style={styles.addressLocation}>{orderData.deliveryAddress.location}</Text>
-                            <Text style={styles.addressIndex}>{orderData.deliveryAddress.index}</Text>
+                            <Text style={[styles.addressText, { color: colors.muted }]}>{orderData.deliveryAddress.address}</Text>
                         </View>
                     </View>
                 </View>
 
-                {/* Offers & Coupons Section */}
+                {/* Offers & Coupons */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Offers & Coupons</Text>
-                    <TouchableOpacity style={styles.offersCard} onPress={()=>navigation.navigate('Offers')}>
-                        <OfferIcon width={s(25)} height={s(25)} />
-                        <Text style={styles.offersPlaceholder}>Offers & Coupons</Text>
-                        <View style={styles.offersArrow}>
-                            <RightArrowICon stroke={'#fff'} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Offers & Coupons</Text>
+                    <TouchableOpacity 
+                        style={[styles.offersCard, { backgroundColor: colors.white, borderColor: colors.border }]}
+                        onPress={() => navigation.navigate('Offers')}
+                    >
+                        <OfferIcon width={s(20)} height={s(20)} stroke={colors.orange} />
+                        <Text style={[styles.offersPlaceholder, { color: colors.text }]}>Offers & Coupons</Text>
+                        <View style={[styles.offersArrow, { backgroundColor: colors.orange }]}>
+                            <RightArrowICon stroke={colors.white} />
                         </View>
                     </TouchableOpacity>
                 </View>
 
-                {/* Payment Method Section */}
+                {/* Payment Method */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Payment Method</Text>
-                    <View style={styles.paymentCard}>
-                        <Text style={styles.paymentMethod}>{orderData.paymentMethod}</Text>
-                        <PaymentCheckBoxIcon />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Method</Text>
+                    <View style={[styles.paymentCard, { backgroundColor: colors.white, borderColor: colors.border }]}>
+                        <Text style={[styles.paymentMethod, { color: colors.text }]}>{orderData.paymentMethod}</Text>
+                        <PaymentCheckBoxIcon  />
                     </View>
                 </View>
 
-                {/* Payment Summary Section */}
+                {/* Payment Summary */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Payment Summary</Text>
-
-                    <View style={styles.summaryCard}>
-                        <Text style={styles.totalItems}>Total Items ({totalItems})</Text>
-                        <View style={styles.divider} />
-
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Summary</Text>
+                    <View style={[styles.summaryCard, { backgroundColor: colors.white, borderColor: colors.border }]}>
+                        <Text style={[styles.totalItems, { color: colors.text }]}>Total Items ({totalItems})</Text>
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Subtotal</Text>
-                            <Text style={styles.summaryValue}>₹{subtotalInr}</Text>
+                            <Text style={[styles.summaryLabel, { color: colors.muted }]}>Subtotal</Text>
+                            <Text style={[styles.summaryValue, { color: colors.text }]}>₹{subtotalInr}</Text>
                         </View>
-
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Discount</Text>
-                            <Text style={styles.discountValue}>-₹{discountInr}</Text>
+                            <Text style={[styles.summaryLabel, { color: colors.muted }]}>Discount</Text>
+                            <Text style={[styles.discountValue, { color: colors.orange }]}>-₹{discountInr}</Text>
                         </View>
-
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                            <Text style={styles.freeText}>Free</Text>
+                            <Text style={[styles.summaryLabel, { color: colors.muted }]}>Delivery Fee</Text>
+                            <Text style={[styles.freeText, { color: colors.green }]}>Free</Text>
                         </View>
-
-                        <View style={styles.divider} />
-
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
                         <View style={styles.totalRow}>
-                            <Text style={styles.totalLabel}>Total</Text>
-                            <Text style={styles.totalPrice}>₹{totalInr}</Text>
+                            <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
+                            <Text style={[styles.totalPrice, { color: colors.text }]}>₹{totalInr}</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Place Order Button */}
-                <TouchableOpacity style={styles.placeOrderButton} onPress={() => PlaceOrderHandle()}>
+                <TouchableOpacity 
+                    style={[styles.placeOrderButton, { backgroundColor: colors.primary }]}
+                    onPress={() => navigation.replace('OrderConfirem')}
+                >
                     <Text style={styles.placeOrderText}>Place Order</Text>
                 </TouchableOpacity>
             </ScrollView>
@@ -159,267 +151,210 @@ const OrderDetails = () => {
 export default OrderDetails
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: BRAND.bg,
+    emptyContainer: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        paddingHorizontal: s(10) 
     },
-    scrollView: {
-        flex: 1,
+    emptyText: { 
+        fontSize: s(13), 
+        fontWeight: 'bold', 
+        marginBottom: vs(4) 
     },
-    emptyContainer: {
-        flex: 1,
-        backgroundColor: '#fff',
-        justifyContent: 'center',
+    emptySubText: { 
+        fontSize: s(11), 
+        textAlign: 'center' 
+    },
+    section: { 
+        paddingHorizontal: s(10), 
+        paddingVertical: vs(4) 
+    },
+    sectionTitle: { 
+        fontSize: s(13), 
+        fontWeight: 'bold', 
+        marginBottom: vs(6) 
+    },
+    item: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
         alignItems: 'center',
-        paddingHorizontal: s(12),
-    },
-    emptyText: {
-        fontSize: s(16),
-        fontWeight: 'bold',
-        color: '#666',
-        marginBottom: vs(6),
-    },
-    emptySubText: {
-        fontSize: s(14),
-        color: '#999',
-        textAlign: 'center',
-    },
-    section: {
-        backgroundColor: BRAND.bg,
-        paddingHorizontal: s(12),
-        paddingVertical: vs(6),
-    },
-    sectionTitle: {
-        fontSize: s(15),
-        fontWeight: 'bold',
-        color: BRAND.dark,
-        marginBottom: vs(10),
-    },
-    // Item Details Container (unchanged)
-    item: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: s(15),
-        marginBottom: vs(10),
-        backgroundColor: BRAND.white,
-        borderRadius: s(12),
-    },
-    itemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    itemImage: {
-        width: s(70),
-        height: s(70),
+        padding: s(10), 
+        marginBottom: vs(6), 
         borderRadius: s(8),
-        marginRight: s(12),
-        backgroundColor: '#f8f8f8',
+        shadowOffset: { width: 0, height: 1 }, 
+        shadowRadius: 2, 
+        elevation: 1
     },
-    itemInfo: {
-        flex: 1,
+    itemLeft: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        flex: 1 
     },
-    itemName: {
-        fontSize: s(16),
-        fontWeight: '600',
-        color: BRAND.dark,
-        marginBottom: vs(4),
+    itemImage: { 
+        width: s(50), 
+        height: s(50), 
+        borderRadius: s(6), 
+        marginRight: s(8) 
     },
-    itemQuantity: {
-        fontSize: s(14),
-        color: BRAND.muted,
+    itemInfo: { 
+        flex: 1 
     },
-    itemPrice: {
-        fontSize: s(16),
-        fontWeight: 'bold',
-        color: BRAND.orange,
+    itemName: { 
+        fontSize: s(13), 
+        fontWeight: '600', 
+        marginBottom: vs(2) 
     },
-    divider: {
-        height: 1,
-        backgroundColor: '#e0e0e0',
-        marginVertical: vs(6),
+    itemQuantity: { 
+        fontSize: s(11) 
     },
-    // Address Container (reduced)
-    addressCard: {
-        backgroundColor: BRAND.white,
-        flexDirection: 'row',
-        padding: s(10),
-        borderRadius: s(10),
-        borderWidth: 1,
-        borderColor: '#dee2e6',
+    itemPrice: { 
+        fontSize: s(13), 
+        fontWeight: 'bold' 
     },
-    addressIconContainer: {
-        width: s(40),
-        height: s(40),
-        borderRadius: s(10),
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FE8C0033',
-        marginRight: s(10),
+    addressCard: { 
+        flexDirection: 'row', 
+        padding: s(8), 
+        borderRadius: s(8), 
+        borderWidth: 1 
     },
-    addressContent: {
-        flex: 1,
+    addressIconContainer: { 
+        width: s(32), 
+        height: s(32), 
+        borderRadius: s(8), 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        marginRight: s(8) 
     },
-    addressHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: vs(4),
+    addressContent: { 
+        flex: 1 
     },
-    addressTextContent: {
-        flex: 1,
+    addressHeader: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start', 
+        marginBottom: vs(2) 
     },
-    addressTitle: {
-        fontSize: s(14),
-        fontWeight: 'bold',
-        color: BRAND.dark,
-        marginBottom: vs(1),
+    addressTextContent: { 
+        flex: 1 
     },
-    addressStatus: {
-        fontSize: s(12),
-        fontWeight: 'bold',
-        color: '#28a745',
-        marginBottom: vs(1),
+    addressTitle: { 
+        fontSize: s(12), 
+        fontWeight: 'bold', 
+        marginBottom: vs(1) 
     },
-    addressOwner: {
-        fontSize: s(12),
-        fontWeight: 'bold',
-        color: BRAND.dark,
-        marginBottom: vs(1),
+    addressStatus: { 
+        fontSize: s(10), 
+        fontWeight: 'bold', 
+        marginBottom: vs(1) 
     },
-    addressText: {
-        fontSize: s(12),
-        color: BRAND.muted,
-        marginBottom: vs(2),
-        lineHeight: vs(16),
+    addressOwner: { 
+        fontSize: s(10), 
+        fontWeight: 'bold', 
+        marginBottom: vs(1) 
     },
-    addressLocation: {
-        fontSize: s(12),
-        color: BRAND.muted,
-        marginBottom: vs(1),
+    addressText: { 
+        fontSize: s(10), 
+        marginBottom: vs(1), 
+        lineHeight: vs(12) 
     },
-    addressIndex: {
-        fontSize: s(12),
-        color: BRAND.muted,
-        fontStyle: 'italic',
+    changeButton: { 
+        padding: s(2) 
     },
-    changeButton: {
-        padding: s(3),
+    change: { 
+        fontSize: s(10), 
+        fontWeight: '500' 
     },
-    change: {
-        fontSize: s(12),
-        fontWeight: '500',
-        color: BRAND.orange,
+    offersCard: { 
+        padding: s(8), 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        borderRadius: s(8), 
+        borderWidth: 1 
     },
-    // Offers & Coupons (reduced)
-    offersCard: {
-        backgroundColor: BRAND.white,
-        padding: s(12),
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderRadius: s(10),
-        borderWidth: 1,
-        borderColor: '#dee2e6',
+    offersPlaceholder: { 
+        fontSize: s(12), 
+        fontWeight: '600', 
+        flex: 1, 
+        marginLeft: s(6) 
     },
-    offersPlaceholder: {
-        fontSize: s(14),
-        fontWeight: '600',
-        color: BRAND.text,
-        flex: 1,
-        marginLeft: s(10),
+    offersArrow: { 
+        width: s(20), 
+        height: s(20), 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        borderRadius: s(10) 
     },
-    offersArrow: {
-        width: s(25),
-        height: s(25),
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: s(12.5),
-        backgroundColor: BRAND.orange,
+    paymentCard: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        padding: s(8), 
+        borderRadius: s(8), 
+        borderWidth: 1 
     },
-    // Payment Method (reduced)
-    paymentCard: {
-        backgroundColor: BRAND.white,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: s(10),
-        borderRadius: s(10),
-        borderWidth: 1,
-        borderColor: '#dee2e6',
+    paymentMethod: { 
+        fontSize: s(12), 
+        fontWeight: 'bold' 
     },
-    paymentMethod: {
-        fontSize: s(14),
-        fontWeight: 'bold',
-        color: BRAND.dark,
+    summaryCard: { 
+        padding: s(8), 
+        borderRadius: s(8), 
+        borderWidth: 1 
     },
-    // Payment Summary (reduced)
-    summaryCard: {
-        backgroundColor: BRAND.white,
-        padding: s(10),
-        borderRadius: s(10),
-        borderWidth: 1,
-        borderColor: '#dee2e6',
+    totalItems: { 
+        fontSize: s(12), 
+        fontWeight: 'bold', 
+        marginBottom: vs(4) 
     },
-    totalItems: {
-        fontSize: s(14),
-        fontWeight: 'bold',
-        color: BRAND.dark,
-        marginBottom: vs(6),
+    divider: { 
+        height: 1, 
+        marginVertical: vs(4) 
     },
-    summaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: vs(4),
+    summaryRow: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: vs(2) 
     },
-    summaryLabel: {
-        fontSize: s(12),
-        color: BRAND.muted,
+    summaryLabel: { 
+        fontSize: s(10) 
     },
-    summaryValue: {
-        fontSize: s(12),
-        fontWeight: '600',
-        color: BRAND.dark,
+    summaryValue: { 
+        fontSize: s(10), 
+        fontWeight: '600' 
     },
-    discountValue: {
-        fontSize: s(12),
-        fontWeight: '600',
-        color: '#dc3545',
+    discountValue: { 
+        fontSize: s(10), 
+        fontWeight: '600' 
     },
-    freeText: {
-        fontSize: s(12),
-        fontWeight: '600',
-        color: '#28a745',
+    freeText: { 
+        fontSize: s(10), 
+        fontWeight: '600' 
     },
-    totalRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: vs(6),
+    totalRow: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginTop: vs(4) 
     },
-    totalLabel: {
-        fontSize: s(15),
-        fontWeight: 'bold',
-        color: BRAND.dark,
+    totalLabel: { 
+        fontSize: s(13), 
+        fontWeight: 'bold' 
     },
-    totalPrice: {
-        fontSize: s(16),
-        fontWeight: 'bold',
-        color: BRAND.dark,
+    totalPrice: { 
+        fontSize: s(13), 
+        fontWeight: 'bold' 
     },
-    // Place Order Button (reduced)
-    placeOrderButton: {
-        backgroundColor: BRAND.primary,
-        margin: s(12),
-        padding: s(12),
-        borderRadius: s(10),
-        alignItems: 'center',
+    placeOrderButton: { 
+        margin: s(10), 
+        padding: s(10), 
+        borderRadius: s(8), 
+        alignItems: 'center' 
     },
-    placeOrderText: {
-        color: BRAND.white,
-        fontSize: s(16),
-        fontWeight: 'bold',
+    placeOrderText: { 
+        color: '#fff', 
+        fontSize: s(13), 
+        fontWeight: 'bold' 
     },
 })

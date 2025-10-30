@@ -863,6 +863,28 @@ export const PaymentCheckBoxIcon = (props) => (
         <Rect x={5} y={5} width={10} height={10} rx={5} fill="#FE8C00" />
     </Svg>
 );
+export const UncheckCheckBoxIcon = (props) => (
+    <Svg
+        width={20}
+        height={20}
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        {...props}
+    >
+        <Rect
+            x={1}
+            y={1}
+            width={18}
+            height={18}
+            rx={9}
+            stroke="#FE8C00"
+            strokeWidth={2}
+            {...props}
+
+        />
+    </Svg>
+);
 
 export const CupponIcon = (props) => (
     <Svg

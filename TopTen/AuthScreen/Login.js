@@ -19,7 +19,7 @@ import BRAND from '../../src/constant/color';
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { s, vs, ms } from 'react-native-size-matters'
 import { useDispatch, useSelector } from 'react-redux';
-import { GetOtp } from '../../store/slices/authSlice';
+import { getOtp, GetOtp } from '../../store/slices/authSlice';
 
 const Login = () => {
   const navigation = useNavigation()
@@ -169,7 +169,7 @@ const Login = () => {
       console.log('Phone number submitted:', formData.phoneNumber)
 
       // Success - Navigate to OTP screen
-      // dispatch(GetOtp({ username: formData.phoneNumber }))
+      // dispatch(getOtp({ username: formData.phoneNumber }))
       navigation.navigate('OTPScreen', {
         phoneNumber: formData.phoneNumber,
         maskedPhone: `XXXXXX${formData.phoneNumber.slice(6)}`

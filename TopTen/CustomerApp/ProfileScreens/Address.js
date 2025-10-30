@@ -1,115 +1,140 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Modal, StatusBar } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { s, vs, ms } from 'react-native-size-matters';
-// import BRAND from '../../../src/constant/color';
-import { AddressIcon, CrossIcon, ThreeDotIcon } from '../../../src/SVGicons/icon';
-import { DarkTheme, useNavigation } from '@react-navigation/native';
-import { useDispatch, useSelector } from 'react-redux';
-import { deleteUserAddress, fetchUserAddress } from '../../../store/slices/userSlice';
+import { AddressIcon, CheckIcon, CheckIcon2, CrossIcon, PaymentCheckBoxIcon, ThreeDotIcon, UncheckCheckBoxIcon } from '../../../src/SVGicons/icon';
+import { useNavigation } from '@react-navigation/native';
+import { useDispatch, useSelector, shallowEqual } from 'react-redux';
+import { deleteUserAddress, fetchUserAddress, setSelectedAddress as setSelectedAddressAction } from '../../../store/slices/userSlice';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DARK ,BRAND} from '../../../src/constant/colors';
+import { DARK, BRAND } from '../../../src/constant/colors';
 
 const Address = () => {
-    const [modalVisible, setModalVisible] = useState(false);
-    const [selectedAddress, setSelectedAddress] = useState(null);
-    const Theme = useSelector(state=>state?.auth?.Theme)
-    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-    const navigation = useNavigation();
     const dispatch = useDispatch();
+    const navigation = useNavigation();
 
-    // Select user address data from Redux
-    const userAddresses = useSelector(state => state?.user?.address || []);
-    // console.log("user address:", userAddresses);
+    // Selected address id from Redux
+    const selectedAddressId = useSelector(state => state?.user?.selectedAddress, shallowEqual);
+    const Theme = useSelector(state => state?.auth?.Theme, shallowEqual);
+    const userAddresses = useSelector(state => state?.user?.address || [], shallowEqual);
+    console.log('selected addres  id:', selectedAddressId)
+
+    // Local state for modals and address for modals
+    const [modalVisible, setModalVisible] = useState(false);
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    // Save the full selected address object locally only when modals open
+    const [modalAddress, setModalAddress] = useState(null);
 
     useEffect(() => {
         dispatch(fetchUserAddress());
+
     }, [dispatch]);
 
-    const handleThreeDotPress = (address) => {
-        setSelectedAddress(address);
+    useEffect(() => {
+        if (!selectedAddressId && userAddresses.length > 0) {
+            dispatch(setSelectedAddressAction(userAddresses[0].id));
+        }
+    }, [selectedAddressId, userAddresses, dispatch]);
+
+    // Handler to open options modal for an address
+    const handleThreeDotPress = useCallback((address) => {
+        setModalAddress(address); // full address for editing or deleting
         setModalVisible(true);
-    };
+    }, []);
 
-    const handleEdit = () => {
+    // Edit button pressed in modal
+    const handleEdit = useCallback(() => {
         setModalVisible(false);
-        navigation.navigate('EditAdrees', {
-            addressData: selectedAddress,
-            onSave: (updatedAddress) => {
-                // You can implement update logic here or dispatch an update action
-            },
-        });
-    };
+        if (modalAddress) {
+            navigation.navigate('EditAdrees', { addressData: modalAddress });
+        }
+    }, [modalAddress, navigation]);
 
-    const handleDelete = () => {
+    // Delete button pressed in modal
+    const handleDelete = useCallback(() => {
         setModalVisible(false);
-        // console.log('selected Address:',selectedAddress)
         setDeleteModalVisible(true);
-    };
+    }, []);
 
-    const confirmDelete = async () => {
+    // Confirm delete address action
+    const confirmDelete = useCallback(async () => {
         setDeleteModalVisible(false);
-
-        if (!selectedAddress || !selectedAddress.id) {
+        if (!modalAddress?.id) {
             Alert.alert("Error", "No address selected for deletion.");
             return;
         }
-
         try {
-            console.log('Deleting address ID:', selectedAddress.id);
-            await dispatch(deleteUserAddress(selectedAddress.id)).unwrap();
-            setSelectedAddress(null);
+            await dispatch(deleteUserAddress(modalAddress.id)).unwrap();
+            // Clear selection if deleted address was selected
+            if (modalAddress.id === selectedAddressId) {
+                dispatch(setSelectedAddressAction(null));
+            }
             Alert.alert("Success", "Address deleted successfully");
+            setModalAddress(null);
         } catch (error) {
-            console.error("Delete address failed:", error);
             Alert.alert("Error", error || "Failed to delete address. Please try again.");
         }
-    };
+    }, [dispatch, modalAddress, selectedAddressId]);
 
-
-    const closeModal = () => {
+    // Close modals handlers
+    const closeModal = useCallback(() => {
         setModalVisible(false);
-        setSelectedAddress(null);
-    };
+        setModalAddress(null);
+    }, []);
 
-    const closeDeleteModal = () => {
+    const closeDeleteModal = useCallback(() => {
         setDeleteModalVisible(false);
-        setSelectedAddress(null);
-    };
+        setModalAddress(null);
+    }, []);
+
+    // Render Address Card
+    const renderAddressCard = useCallback((address) => {
+        const isSelected = selectedAddressId === address.id;
+        return (
+            <TouchableOpacity onPress={() => dispatch(setSelectedAddressAction(address.id))}
+                key={address.id}
+                style={[styles.addressCard, Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border },
+                isSelected && {borderColor:BRAND.orange}
+                ]}>
+                <TouchableOpacity
+                    style={styles.ThreeDoteView}
+                    onPress={() => handleThreeDotPress(address)}
+                >
+                    <ThreeDotIcon stroke={Theme ? DARK.muted : BRAND.text} width={s(18)} height={s(18)} />
+                </TouchableOpacity>
+                <View style={{ alignItems: "flex-start", height: "100%" }}>
+                    <View style={styles.IconContaner}>
+                        <AddressIcon width={s(24)} height={s(24)} />
+                    </View>
+                </View>
+                <View style={styles.addressDetails}>
+                    <Text style={[styles.addressTitle, Theme && { color: DARK.gray[600] }]}>{address.add_name}</Text>
+                    <Text style={[styles.addressText, Theme && { color: DARK.gray[500] }]}>{address.address}</Text>
+                    <Text style={[styles.addressText, Theme && { color: DARK.gray[500] }]}>{address.city}, {address.state}</Text>
+                    <Text style={[styles.addressText, Theme && { color: DARK.gray[500] }]}>Floor: {address.floor_no}, Gali: {address.gali_no}</Text>
+                    {address.landmark ? (
+                        <Text style={[styles.addressText, Theme && { color: DARK.gray[500] }]}>Landmark: {address.landmark}</Text>
+                    ) : null}
+                    <Text style={[styles.addressText, Theme && { color: DARK.gray[500] }]}>Pincode: {address.pincode}</Text>
+                </View>
+                <TouchableOpacity onPress={() => dispatch(setSelectedAddressAction(address.id))}>
+                    {isSelected ? <PaymentCheckBoxIcon /> : <UncheckCheckBoxIcon />}
+                </TouchableOpacity>
+            </TouchableOpacity>
+        );
+    }, [Theme, selectedAddressId, dispatch, handleThreeDotPress]);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: Theme ? DARK.bg : BRAND.bg }]}>
             <StatusBar backgroundColor={Theme ? DARK.bg : BRAND.bg} barStyle={Theme ? 'light-content' : "dark-content"} />
 
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent,Theme && {backgroundColor:DARK.bg}]}
-            >
+                contentContainerStyle={[styles.scrollContent, Theme && { backgroundColor: DARK.bg }]}>
                 {userAddresses.length === 0 ? (
                     <Text style={styles.noAddressText}>No addresses available.</Text>
                 ) : (
-                    userAddresses.map((address) => (
-                        <View key={address.id} style={[styles.addressCard,Theme && {backgroundColor :DARK.gray[100], borderColor:DARK.border}]}>
-                            <TouchableOpacity
-                                style={styles.ThreeDoteView}
-                                onPress={() => handleThreeDotPress(address)}
-                            >
-                                <ThreeDotIcon stroke ={Theme ? DARK.muted: BRAND.text} />
-                            </TouchableOpacity>
-                            <View style={styles.IconContaner}>
-                                <AddressIcon width={s(30)} height={s(30)} />
-                            </View>
-                            <View style={styles.addressDetails}>
-                                <Text style={[styles.addressTitle,Theme && {color :DARK.gray[600]}]}>{address.add_name}</Text>
-                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>{address.address}</Text>
-                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>{address.city}, {address.state}</Text>
-                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Floor: {address.floor_no}, Gali: {address.gali_no}</Text>
-                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Landmark: {address.landmark}</Text>
-                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Pincode: {address.pincode}</Text>
-                                <Text style={[styles.addressText,Theme && {color :DARK.gray[500]}]}>Country: {address.country}</Text>
-                            </View>
-                        </View>
-                    ))
+                    userAddresses.map(renderAddressCard)
                 )}
             </ScrollView>
 
@@ -125,20 +150,12 @@ const Address = () => {
                     activeOpacity={1}
                     onPress={closeModal}
                 >
-                    <View style={[styles.modalContent,Theme && {backgroundColor:DARK.gray[200],borderColor:DARK.muted,borderWidth:s(1)}]}>
-                        <TouchableOpacity
-                            style={styles.optionButton}
-                            onPress={handleEdit}
-                        >
-                            <Text style={[styles.optionText,Theme && {color:DARK.gray[600]}]}>Edit</Text>
+                    <View style={[styles.modalContent, Theme && { backgroundColor: DARK.gray[200], borderColor: DARK.muted, borderWidth: s(1) }]}>
+                        <TouchableOpacity style={styles.optionButton} onPress={handleEdit}>
+                            <Text style={[styles.optionText, Theme && { color: DARK.gray[600] }]}>Edit</Text>
                         </TouchableOpacity>
-
-                        <View style={[styles.divider,Theme && {backgroundColor:DARK.muted}]} />
-
-                        <TouchableOpacity
-                            style={[styles.optionButton, styles.deleteButton]}
-                            onPress={handleDelete}
-                        >
+                        <View style={[styles.divider, Theme && { backgroundColor: DARK.muted }]} />
+                        <TouchableOpacity style={styles.optionButton} onPress={handleDelete}>
                             <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
                         </TouchableOpacity>
                     </View>
@@ -152,38 +169,21 @@ const Address = () => {
                 visible={deleteModalVisible}
                 onRequestClose={closeDeleteModal}
             >
-                <TouchableOpacity
-                    style={[styles.modalOverlay, { justifyContent: 'flex-start' }]}
-                    activeOpacity={1}
-                    onPress={closeDeleteModal}
-                >
-                    <View style={[styles.DeletModal,Theme && {backgroundColor:DARK.gray[200],borderColor:DARK.muted,borderWidth:s(1)}]}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeDeleteModal}>
+                    <View style={[styles.DeletModal, Theme && { backgroundColor: DARK.gray[200], borderColor: DARK.muted, borderWidth: s(1) }]}>
                         <View style={styles.deleteModalHeader}>
-                            <Text style={[styles.deleteModalTitle,Theme && {color :DARK.gray[600]}]}>Delete Confirmation</Text>
-                            <TouchableOpacity
-                                style={styles.closeButton}
-                                onPress={closeDeleteModal}
-                            >
-                                <CrossIcon />
+                            <Text style={[styles.deleteModalTitle, Theme && { color: DARK.gray[600] }]}>Delete Address</Text>
+                            <TouchableOpacity style={styles.closeButton} onPress={closeDeleteModal}>
+                                <CrossIcon width={s(14)} height={s(14)} />
                             </TouchableOpacity>
                         </View>
-
-                        <Text style={[styles.deleteModalText,Theme && {color :DARK.gray[600]}]}>
-                            Are you sure to delete this address?
-                        </Text>
-
+                        <Text style={[styles.deleteModalText, Theme && { color: DARK.gray[600] }]}>Are you sure to delete this address?</Text>
                         <View style={styles.deleteModalButtons}>
-                            <TouchableOpacity
-                                style={styles.deletModalButton}
-                                onPress={closeDeleteModal}
-                            >
-                                <Text style={styles.BackButton}>Back</Text>
+                            <TouchableOpacity style={styles.deletModalButton} onPress={closeDeleteModal}>
+                                <Text style={styles.BackButton}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.deletModalButton, { backgroundColor: '#FF0000' }]}
-                                onPress={confirmDelete}
-                            >
-                                <Text style={[styles.BackButton, { color: BRAND.white }]}>Delete</Text>
+                            <TouchableOpacity style={[styles.deletModalButton, styles.deleteConfirmButton]} onPress={confirmDelete}>
+                                <Text style={[styles.BackButton, styles.deleteConfirmText]}>Delete</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -193,21 +193,12 @@ const Address = () => {
             {/* Add New Address Button */}
             <View style={styles.bottomContainer}>
                 <TouchableOpacity style={styles.addButton} onPress={() => {
-                    console.log('No of address:', userAddresses.length)
                     if (userAddresses.length < 5) {
-                        navigation.navigate('EditAdrees', {
-                            onSave: (newAddress) => {
-                                // You can add new address logic here
-                            }
-                        })
+                        navigation.navigate('EditAdrees');
+                    } else {
+                        Alert.alert('Limit Reached', 'To add new address, please delete an existing one.');
                     }
-                    else {
-                        Alert.alert('Alert', 'To add new address , plz delete a one .')
-
-                    }
-
-                }
-                }>
+                }}>
                     <Text style={styles.addButtonText}>Add New Address</Text>
                 </TouchableOpacity>
             </View>
@@ -220,89 +211,82 @@ export default Address;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: BRAND.white,
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingHorizontal: s(20),
-        paddingTop: vs(20),
-        paddingBottom: vs(100),
+        paddingHorizontal: s(16),
+        paddingTop: vs(16),
+        paddingBottom: vs(90),
     },
     addressCard: {
         backgroundColor: BRAND.white,
-        borderRadius: s(12),
+        borderRadius: s(10),
         borderWidth: s(1),
         borderColor: BRAND.border,
-        padding: s(16),
-        marginBottom: vs(20),
+        padding: s(12),
+        marginBottom: vs(12),
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.05,
-        shadowRadius: 3.84,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
         flexDirection: 'row',
-        gap: s(10),
+        alignItems: 'center',
+        gap: s(8),
     },
     addressDetails: {
         flex: 1,
     },
     addressTitle: {
-        fontSize: ms(18),
+        fontSize: ms(15),
         fontWeight: '600',
         color: BRAND.text,
-        marginBottom: vs(8),
+        marginBottom: vs(4),
     },
     addressText: {
-        fontSize: ms(14),
+        fontSize: ms(12),
         color: BRAND.muted,
-        lineHeight: vs(20),
+        lineHeight: vs(16),
+        marginBottom: vs(2),
     },
     bottomContainer: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        // backgroundColor: BRAND.white,
-        paddingHorizontal: s(20),
-        paddingVertical: vs(16),
-        borderTopColor: BRAND.border,
+        paddingHorizontal: s(16),
+        paddingVertical: vs(12),
     },
     addButton: {
         backgroundColor: BRAND.primary,
-        paddingVertical: vs(14),
-        borderRadius: s(12),
+        paddingVertical: vs(12),
+        borderRadius: s(10),
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 3,
+        shadowRadius: 3,
+        elevation: 2,
     },
     addButtonText: {
         color: BRAND.white,
-        fontSize: ms(16),
+        fontSize: ms(14),
         fontWeight: '600',
     },
     IconContaner: {
-        width: s(50),
-        height: s(50),
+        width: s(40),
+        height: s(40),
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: s(12),
+        borderRadius: s(10),
         backgroundColor: '#F18B4033',
     },
     ThreeDoteView: {
         position: 'absolute',
-        right: s(10),
-        top: s(10),
-        padding: s(10),
+        right: s(8),
+        top: s(8),
+        padding: s(6),
         zIndex: 1,
     },
     modalOverlay: {
@@ -313,89 +297,84 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: BRAND.white,
-        borderRadius: s(12),
-        padding: s(0),
-        width: '80%',
-        maxWidth: s(250),
+        borderRadius: s(10),
+        width: '70%',
+        maxWidth: s(200),
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 5,
     },
     optionButton: {
-        paddingVertical: vs(16),
-        paddingHorizontal: s(20),
+        paddingVertical: vs(12),
+        paddingHorizontal: s(16),
         alignItems: 'center',
     },
     optionText: {
-        fontSize: ms(16),
+        fontSize: ms(14),
         fontWeight: '500',
         color: BRAND.text,
     },
-    deleteButton: {},
     deleteText: {
         color: '#FF3B30',
     },
     divider: {
         height: 1,
         backgroundColor: BRAND.border,
-        marginHorizontal: s(10),
     },
     DeletModal: {
-        width: '90%',
-        height: vs(180),
+        width: '85%',
         backgroundColor: BRAND.white,
-        borderRadius: s(20),
-        justifyContent: 'space-evenly',
-        marginTop: s(20),
+        borderRadius: s(16),
+        marginTop: vs(60),
+        padding: s(16),
     },
     deleteModalHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: s(20),
-        borderBottomWidth: s(0.5),
-        paddingBottom: s(10),
-        borderBottomColor: BRAND.muted,
+        marginBottom: vs(12),
     },
     deleteModalTitle: {
-        fontSize: s(18),
-        fontWeight: '800',
+        fontSize: ms(16),
+        fontWeight: '700',
         color: BRAND.text,
     },
     closeButton: {
-        padding: s(8),
+        padding: s(4),
     },
     deleteModalText: {
-        fontSize: s(16),
+        fontSize: ms(14),
         color: BRAND.text,
-        textAlign: 'left',
-        fontWeight: '800',
-        marginHorizontal: s(20),
+        marginBottom: vs(16),
+        lineHeight: vs(20),
     },
     deleteModalButtons: {
         flexDirection: 'row',
-        marginHorizontal: s(10),
+        gap: s(12),
     },
     deletModalButton: {
-        backgroundColor: '#D9D9D9',
         flex: 1,
-        justifyContent: 'center',
+        paddingVertical: vs(10),
+        borderRadius: s(8),
         alignItems: 'center',
-        marginHorizontal: s(10),
-        paddingVertical: s(8),
-        borderRadius: s(12),
+        backgroundColor: '#F5F5F5',
+    },
+    deleteConfirmButton: {
+        backgroundColor: '#FF3B30',
+    },
+    deleteConfirmText: {
+        color: BRAND.white,
+        fontWeight: '600',
     },
     BackButton: {
-        fontSize: s(18),
+        fontSize: ms(14),
         color: BRAND.text,
+        fontWeight: '500',
     },
     noAddressText: {
-        fontSize: ms(16),
+        fontSize: ms(14),
         color: BRAND.muted,
         textAlign: 'center',
         marginTop: vs(40),

@@ -11,6 +11,7 @@ export const checkUserStatus = createAsyncThunk("user/checkUserStatus", async (_
         await dispatch(fetchBannerConfig());
         await dispatch(fetchCategories());
         await dispatch(fetchAllGroups())
+        // await dispatch()
         // console.log('profilepic on userslice:', profilepic)
         return {
             // profilepic
@@ -97,6 +98,38 @@ export const fetchAllGroups = createAsyncThunk(
             return data;
         } catch (error) {
             return rejectWithValue(error.message || "Failed to fetch groups");
+        }
+    }
+);
+
+export const fetchSubcategories = createAsyncThunk(
+    "prod/fetchSubcategories",
+    async (category_id, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const accessToken = state.auth?.accessToken || await AsyncStorage.getItem('accessToken');
+
+            const response = await fetch(`${BASE_URL}/prod/get_subcategory?category_id=${category_id}`, {
+                method: "GET",
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || "Failed to fetch subcategories");
+            }
+
+            const data = await response.json();
+            console.log(`Subcategories for category ${category_id}:`, data);
+            return {
+                category_id,
+                data
+            };
+        } catch (error) {
+            return rejectWithValue(error.message || "Failed to fetch subcategories");
         }
     }
 );
@@ -305,8 +338,10 @@ const initialState = {
     address: null,
     categories: null,
     groupProducts: {},
+    subcategories: {},
     isLoading: false,
     error: null,
+    selectedAddress: null,
 };
 
 const userSlice = createSlice({
@@ -325,10 +360,32 @@ const userSlice = createSlice({
         clearGroupProductsByGroup: (state, action) => {
             const groupName = action.payload;
             delete state.groupProducts[groupName];
+        },
+        setSelectedAddress: (state, action) => {
+            state.selectedAddress = action.payload
+        },
+        clearSubcategories: (state, action) => {
+            state.subcategories = {}
         }
     },
     extraReducers: (builder) => {
         builder
+            // Add this to your existing extraReducers builder
+            .addCase(fetchSubcategories.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(fetchSubcategories.fulfilled, (state, action) => {
+                state.isLoading = false;
+                const { category_id, data } = action.payload;
+
+                // Store subcategories by category_id
+                state.subcategories[category_id] = data;
+            })
+            .addCase(fetchSubcategories.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload;
+            })
             // Add cases for fetchProductsByGroup
             .addCase(fetchProductsByGroup.pending, (state) => {
                 state.isLoading = true;
@@ -466,7 +523,10 @@ const userSlice = createSlice({
 export const {
     // setProfilepic,
     // clearProfilepic,
-    clearGroupProducts, clearGroupProductsByGroup
+    clearGroupProducts, clearGroupProductsByGroup,
+    setSelectedAddress,
+    clearSubcategories,
+
 } = userSlice.actions;
 
 export default userSlice.reducer;

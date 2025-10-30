@@ -33,9 +33,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Profile = () => {
-  const iconWidth = s(16);
-  const iconHeight = s(16);
-  // const [theme, setTheme] = useState(false)
+  const iconWidth = s(14);
+  const iconHeight = s(14);
   const profile = useSelector(state => state?.auth?.profile);
   const profile_pic = useSelector(state => state?.auth?.profile_pic);
   const isLoading = useSelector(state => state?.auth?.isLoading);
@@ -399,7 +398,7 @@ const Profile = () => {
           <ActivityIndicator size="small" color={BRAND.error} />
         ) : (
           <>
-            <SignOutIcon width={s(16)} height={s(16)} />
+            <SignOutIcon width={s(14)} height={s(14)} />
             <Text style={styles.signUptext}>Sign Out</Text>
           </>
         )}
@@ -456,9 +455,9 @@ const Profile = () => {
       }}>
         {
           Theme ?
-            <MoonIcon width={s(20)} height={s(20)} fill={BRAND.white} />
+            <MoonIcon width={s(18)} height={s(18)} fill={BRAND.white} />
             :
-            <SunIcon width={s(20)} height={s(20)} />
+            <SunIcon width={s(18)} height={s(18)} />
 
         }
 
@@ -473,7 +472,7 @@ const MenuItem = ({ title, icon, onPress, Theme }) => (
       <View style={[styles.iconBOx, Theme && { backgroundColor: DARK.gray[300] }]}>{icon}</View>
       <Text style={[styles.menuText, Theme && { color: DARK.text }]}>{title}</Text>
     </View>
-    <RightArrowICon width={s(14)} height={s(14)} stroke={Theme ? DARK.border : BRAND.black} />
+    <RightArrowICon width={s(12)} height={s(12)} stroke={Theme ? DARK.border : BRAND.black} />
   </TouchableOpacity>
 );
 
@@ -482,26 +481,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BRAND.bg,
     alignItems: 'center',
-    paddingTop: vs(15),
+    paddingTop: vs(12),
   },
   avatarSection: {
     alignItems: 'center',
-    marginBottom: vs(8),
+    marginBottom: vs(6),
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: vs(10),
-    marginTop: s(20)
+    marginBottom: vs(8),
+    marginTop: s(16)
   },
   avatar: {
-    width: s(120),
-    height: s(120),
-    borderRadius: s(60),
+    width: s(100),
+    height: s(100),
+    borderRadius: s(50),
     backgroundColor: BRAND.bg,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    borderWidth: s(2),
+    borderWidth: s(1.5),
     borderColor: BRAND.primary,
   },
   avatarImage: {
@@ -516,100 +515,58 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.bg,
   },
   uploadingText: {
-    marginTop: vs(5),
-    fontSize: s(10),
+    marginTop: vs(4),
+    fontSize: s(9),
     color: BRAND.primary,
     fontWeight: '500',
   },
   cameraIconContainer: {
     position: 'absolute',
-    width: s(26),
-    height: s(26),
+    width: s(22),
+    height: s(22),
     backgroundColor: BRAND.white,
-    borderRadius: s(13),
-    right: s(4),
-    bottom: s(4),
+    borderRadius: s(11),
+    right: s(3),
+    bottom: s(3),
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: s(1),
+    borderWidth: s(0.8),
     borderColor: BRAND.primary,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   removePhotoButton: {
-    paddingHorizontal: s(12),
-    paddingVertical: vs(6),
-    borderRadius: s(15),
+    paddingHorizontal: s(10),
+    paddingVertical: vs(5),
+    borderRadius: s(12),
     backgroundColor: BRAND.error + '20',
   },
   removePhotoText: {
-    fontSize: s(12),
+    fontSize: s(11),
     color: BRAND.error,
     fontWeight: '500',
   },
   name: {
-    fontSize: s(16),
+    fontSize: s(14),
     fontWeight: '600',
-    marginBottom: vs(2),
+    marginBottom: vs(1),
     color: BRAND.text,
   },
   email: {
-    fontSize: s(12),
+    fontSize: s(11),
     color: BRAND.muted,
   },
   menuCard: {
-    marginTop: vs(12),
+    marginTop: vs(10),
     width: '90%',
     backgroundColor: BRAND.bg,
-    borderRadius: s(10),
-    borderWidth: s(1),
+    borderRadius: s(8),
+    borderWidth: s(0.8),
     borderColor: BRAND.border,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: vs(12),
-    paddingHorizontal: s(14),
-  },
-  menuItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(10),
-  },
-  divider: {
-    height: s(1),
-    backgroundColor: BRAND.border,
-    marginHorizontal: s(10),
-  },
-  menuText: {
-    fontSize: s(14),
-    color: BRAND.text,
-    fontWeight: '500',
-  },
-  SignOutButton: {
-    borderWidth: s(1),
-    borderColor: BRAND.border,
-    width: '90%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: s(6),
-    paddingVertical: vs(10),
-    marginTop: vs(12),
-    borderRadius: s(100),
-    flexDirection: 'row',
-    backgroundColor: BRAND.bg,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -618,19 +575,61 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 2,
   },
+  menuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: vs(10),
+    paddingHorizontal: s(12),
+  },
+  menuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(8),
+  },
+  divider: {
+    height: s(0.8),
+    backgroundColor: BRAND.border,
+    marginHorizontal: s(8),
+  },
+  menuText: {
+    fontSize: s(13),
+    color: BRAND.text,
+    fontWeight: '500',
+  },
+  SignOutButton: {
+    borderWidth: s(0.8),
+    borderColor: BRAND.border,
+    width: '90%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: s(5),
+    paddingVertical: vs(8),
+    marginTop: vs(10),
+    borderRadius: s(100),
+    flexDirection: 'row',
+    backgroundColor: BRAND.bg,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.02,
+    shadowRadius: 1,
+  },
   signUptext: {
     color: "#F14141",
-    fontSize: s(14),
+    fontSize: s(13),
     fontWeight: '500',
   },
   iconBOx: {
-    padding: s(5),
-    borderRadius: s(5),
+    padding: s(4),
+    borderRadius: s(4),
     backgroundColor: BRAND.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
-    width: s(32),
-    height: s(32),
+    width: s(28),
+    height: s(28),
   },
   modalOverlay: {
     flex: 1,
@@ -643,61 +642,61 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: BRAND.white,
-    borderTopLeftRadius: s(12),
-    borderTopRightRadius: s(12),
-    paddingHorizontal: s(16),
-    paddingTop: vs(16),
-    paddingBottom: Platform.OS === 'ios' ? vs(25) : vs(16),
-    marginHorizontal: s(10),
+    borderTopLeftRadius: s(10),
+    borderTopRightRadius: s(10),
+    paddingHorizontal: s(14),
+    paddingTop: vs(12),
+    paddingBottom: Platform.OS === 'ios' ? vs(20) : vs(12),
+    marginHorizontal: s(8),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: -1,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   modalTitle: {
-    fontSize: s(16),
+    fontSize: s(14),
     fontWeight: '600',
     color: BRAND.text,
     textAlign: 'center',
-    marginBottom: vs(16),
+    marginBottom: vs(12),
   },
   modalButton: {
-    paddingVertical: vs(14),
+    paddingVertical: vs(12),
     alignItems: 'center',
   },
   modalButtonText: {
-    fontSize: s(15),
+    fontSize: s(14),
     color: BRAND.primary,
     fontWeight: '500',
   },
   modalDivider: {
-    height: s(1),
+    height: s(0.8),
     backgroundColor: BRAND.border,
     width: '100%',
   },
   cancelButton: {
-    marginTop: vs(8),
+    marginTop: vs(6),
   },
   cancelButtonText: {
-    fontSize: s(15),
+    fontSize: s(14),
     color: BRAND.error,
     fontWeight: '600',
   },
   ThemeCircle: {
-    width: s(40),
-    height: s(40),
+    width: s(36),
+    height: s(36),
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: s(1),
+    borderWidth: s(0.8),
     borderColor: BRAND.border,
     borderRadius: s(100),
     position: "absolute",
-    top: s(5),
-    right: s(14)
+    top: s(4),
+    right: s(12)
   }
 });
 

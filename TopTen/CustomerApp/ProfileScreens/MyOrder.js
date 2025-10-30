@@ -1,17 +1,17 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Modal } from 'react-native'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Modal, StatusBar } from 'react-native'
 import React, { useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import { useSelector } from 'react-redux'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { DARK ,BRAND} from '../../../src/constant/colors'
+import { DARK, BRAND } from '../../../src/constant/colors'
 import { s } from 'react-native-size-matters'
 
 const MyOrder = () => {
   const navigation = useNavigation()
-  const Theme = useSelector(state=>state?.auth?.Theme)
+  const Theme = useSelector(state => state?.auth?.Theme)
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
-  
+
   const [orders, setOrders] = useState([
     {
       id: 1,
@@ -123,6 +123,9 @@ const MyOrder = () => {
     }
   ])
 
+  // Get theme colors based on current theme
+  const colors = Theme ? DARK : BRAND
+
   const handleOrderPress = (order) => {
     navigation.navigate('OrderSummery', { order })
   }
@@ -138,9 +141,9 @@ const MyOrder = () => {
 
   const confirmCancelOrder = () => {
     if (selectedOrder) {
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === selectedOrder.id 
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === selectedOrder.id
             ? { ...order, status: 'Cancelled', canCancel: false }
             : order
         )
@@ -161,13 +164,15 @@ const MyOrder = () => {
       case 'Processing':
         return (
           <View style={styles.statusSection}>
-            <TouchableOpacity 
-              style={styles.processingButton}
+            <TouchableOpacity
+              style={[styles.processingButton, { backgroundColor: colors.orangeLight, borderColor: colors.orange }]}
               onPress={() => handleProcessingPress(order.id)}
             >
-              <Text style={styles.processingButtonText}>Processing</Text>
+              <Text style={[styles.processingButtonText, { color: Theme ? DARK.text : '#856404' }]}>
+                Processing
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => handleCancelPress(order)}
             >
@@ -178,22 +183,26 @@ const MyOrder = () => {
       case 'Delivered':
         return (
           <View style={styles.statusSection}>
-            <TouchableOpacity 
-              style={styles.deliveredButton}
+            <TouchableOpacity
+              style={[styles.deliveredButton, { backgroundColor: Theme ? DARK.gray[100] : '#D4EDDA', borderColor: colors.green }]}
               onPress={() => console.log('Delivered order details:', order.id)}
             >
-              <Text style={styles.deliveredButtonText}>Delivered</Text>
+              <Text style={[styles.deliveredButtonText, { color: Theme ? colors.green : '#155724' }]}>
+                Delivered
+              </Text>
             </TouchableOpacity>
           </View>
         )
       case 'Cancelled':
         return (
           <View style={styles.statusSection}>
-            <TouchableOpacity 
-              style={styles.cancelledButton}
+            <TouchableOpacity
+              style={[styles.cancelledButton, { backgroundColor: Theme ? '#2c1616ff' : '#F8D7DA', borderColor: '#cf4343ff' }]}
               onPress={() => console.log('Cancelled order details:', order.id)}
             >
-              <Text style={styles.cancelledButtonText}>Cancelled</Text>
+              <Text style={[styles.cancelledButtonText, { color: Theme ? '#fff' : '#721C24' }]}>
+                Cancelled
+              </Text>
             </TouchableOpacity>
           </View>
         )
@@ -205,40 +214,56 @@ const MyOrder = () => {
   const renderOrderItems = (items) => {
     return items.map((item) => (
       <View key={item.id} style={styles.itemContainer}>
-        <Image 
-          source={{ uri: item.image }} 
+        <Image
+          source={{ uri: item.image }}
           style={styles.itemImage}
         />
         <View style={styles.itemDetails}>
-          <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.itemSize}>{item.size}</Text>
-          <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
-          <Text style={styles.itemPrice}>${item.price}</Text>
+          <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.itemSize, { color: colors.muted }]}>{item.size}</Text>
+          <Text style={[styles.itemQuantity, { color: colors.muted }]}>Qty: {item.quantity}</Text>
+          <Text style={[styles.itemPrice, { color: colors.text }]}>${item.price}</Text>
         </View>
       </View>
     ))
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={[styles.ordersContainer,{backgroundColor : Theme ?DARK.bg:BRAND.bg}]} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <StatusBar backgroundColor={Theme ? DARK.bg : BRAND.bg} />
+      <ScrollView
+        style={[styles.ordersContainer, { backgroundColor: colors.bg }]}
+        showsVerticalScrollIndicator={false}
+      >
         {orders.map((order) => (
-          <TouchableOpacity 
-            key={order.id} 
-            style={[styles.orderCard, Theme ?  {backgroundColor :DARK.white,borderColor:DARK.border,borderWidth:s(1)} : 
-              {backgroundColor:BRAND.white,borderColor:DARK.border,borderWidth:s(1)}]}
+          <TouchableOpacity
+            key={order.id}
+            style={[
+              styles.orderCard,
+              {
+                backgroundColor: colors.white,
+                borderColor: colors.border,
+                borderWidth: s(1)
+              }
+            ]}
             onPress={() => handleOrderPress(order)}
             activeOpacity={0.7}
           >
             <View style={styles.orderHeader}>
-              <Text style={[styles.orderDate,{color :Theme ? DARK.gray[500] :BRAND.gray[500]}]}>Placed on {order.date}</Text>
-              <Text style={[styles.orderAmount,{color :Theme ? DARK.gray[500] :BRAND.gray[500]}]}>${order.amount}</Text>
+              <Text style={[styles.orderDate, { color: colors.muted }]}>
+                Placed on {order.date}
+              </Text>
+              <Text style={[styles.orderAmount, { color: colors.text }]}>
+                ₹ {order.amount}
+              </Text>
             </View>
-            
+
             <View style={styles.itemsContainer}>
               {renderOrderItems(order.items)}
             </View>
-            
+
             {renderStatusSection(order)}
           </TouchableOpacity>
         ))}
@@ -252,22 +277,24 @@ const MyOrder = () => {
         onRequestClose={closeCancelModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Cancellation Confirmation</Text>
-            
-            <Text style={styles.modalMessage}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.white }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Cancellation Confirmation
+            </Text>
+
+            <Text style={[styles.modalMessage, { color: colors.muted }]}>
               Are you sure to cancel this order?
             </Text>
 
             <View style={styles.modalButtonsContainer}>
-              <TouchableOpacity 
-                style={styles.backButton}
+              <TouchableOpacity
+                style={[styles.backButton, { backgroundColor: colors.gray[500] }]}
                 onPress={closeCancelModal}
               >
                 <Text style={styles.backButtonText}>Back</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.confirmCancelButton}
                 onPress={confirmCancelOrder}
               >
@@ -286,16 +313,13 @@ export default MyOrder
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    // paddingTop: 10,
   },
   ordersContainer: {
     flex: 1,
-    paddingTop:s(10),
+    paddingTop: s(10),
     paddingHorizontal: 12,
   },
   orderCard: {
-    // backgroundColor: 'white',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
@@ -316,13 +340,11 @@ const styles = StyleSheet.create({
   },
   orderDate: {
     fontSize: 12,
-    color: '#666',
     flex: 1,
   },
   orderAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
   },
   itemsContainer: {
     marginBottom: 8,
@@ -344,23 +366,19 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 2,
   },
   itemSize: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 2,
   },
   itemQuantity: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 2,
   },
   itemPrice: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
   },
   statusSection: {
     flexDirection: 'row',
@@ -371,17 +389,14 @@ const styles = StyleSheet.create({
     borderTopColor: '#f0f0f0',
   },
   processingButton: {
-    backgroundColor: '#FFF3CD',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#FFA500',
     minWidth: 100,
     alignItems: 'center',
   },
   processingButtonText: {
-    color: '#856404',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -399,32 +414,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   deliveredButton: {
-    backgroundColor: '#D4EDDA',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#28a745',
     minWidth: 100,
     alignItems: 'center',
   },
   deliveredButtonText: {
-    color: '#155724',
     fontSize: 14,
     fontWeight: '600',
   },
   cancelledButton: {
-    backgroundColor: '#F8D7DA',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#dc3545',
     minWidth: 100,
     alignItems: 'center',
   },
   cancelledButtonText: {
-    color: '#721C24',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -436,7 +445,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 24,
     margin: 20,
@@ -454,13 +462,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 16,
     textAlign: 'center',
   },
   modalMessage: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
@@ -473,7 +479,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
-    backgroundColor: '#6c757d',
     paddingVertical: 12,
     borderRadius: 6,
     alignItems: 'center',

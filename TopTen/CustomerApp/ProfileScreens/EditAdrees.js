@@ -1,13 +1,17 @@
-import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, StatusBar } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { s, vs, ms } from 'react-native-size-matters';
 import BRAND from '../../../src/constant/color';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { postUserAddress, updateUserAddress } from '../../../store/slices/userSlice';
 import { Picker } from '@react-native-picker/picker';
+import { DARK } from '../../../src/constant/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const EditAddress = ({ route, navigation }) => {
     const { addressData, onSave } = route.params || {};
+    const Theme = useSelector(state =>state?.auth?.Theme)
+    const colors = Theme ? DARK :BRAND;
 
     const [formData, setFormData] = useState({
         title: '',
@@ -148,11 +152,12 @@ const EditAddress = ({ route, navigation }) => {
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
+            <StatusBar backgroundColor={colors.bg} />
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent,{backgroundColor:colors.bg}]}
             >
                 {[
                     { label: 'Address Title', field: 'title', dropdown: true },
@@ -165,14 +170,16 @@ const EditAddress = ({ route, navigation }) => {
                     { label: 'Floor Number', field: 'floor_no' },
                 ].map(({ label, field, multiline, keyboardType, maxLength, dropdown }) => (
                     <View key={field} style={styles.inputContainer}>
-                        <Text style={styles.label}>{label}</Text>
+                        <Text style={[styles.label,{color:colors.text}]}>{label}</Text>
                         {dropdown && field === 'title' ? (
-                            <View style={[styles.textInput, styles.pickerContainer]}>
+                            <View style={[styles.textInput, styles.pickerContainer,{backgroundColor:colors.bg,borderColor:colors.border,
+                                
+                            }]}>
                                 <Picker
                                     selectedValue={formData.title}
                                     onValueChange={(itemValue) => handleInputChange(field, itemValue)}
                                     mode="dropdown"
-                                    style={styles.picker}
+                                    style={[styles.picker,{color:colors.text}]}
 
                                 >
                                         <Picker.Item label="Select Address Title" value=""  />
@@ -184,9 +191,9 @@ const EditAddress = ({ route, navigation }) => {
                             </View>
                         ) : (
                             <TextInput
-                                style={styles.textInput}
+                                style={[styles.textInput,{backgroundColor:colors.white,borderColor:colors.border,color:colors.text}]}
                                 placeholder={`Enter ${label.toLowerCase()}`}
-                                placeholderTextColor={BRAND.muted}
+                                placeholderTextColor={colors.muted}
                                 value={formData[field]}
                                 onChangeText={(text) => handleInputChange(field, text)}
                                 multiline={multiline}
@@ -201,23 +208,23 @@ const EditAddress = ({ route, navigation }) => {
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Country</Text>
                     <TextInput
-                        style={[styles.textInput, { backgroundColor: '#f0f0f0' }]}
+                        style={[styles.textInput, { backgroundColor: Theme ?"#3a455eff": '#f0f0f0',borderColor:colors.border,color:colors.text }]}
                         placeholder="India"
-                        placeholderTextColor={BRAND.muted}
+                        placeholderTextColor={colors.muted}
                         value={formData.country}
                         editable={false}
                     />
                 </View>
             </ScrollView>
 
-            <View style={styles.bottomContainer}>
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <View style={[styles.bottomContainer,{backgroundColor:colors.white,borderTopColor:colors.border}]}>
+                <TouchableOpacity style={[styles.saveButton,{backgroundColor:'#1aa027e7',borderWidth:s(1),borderColor:colors.primary}]} onPress={handleSave}>
                     <Text style={styles.saveButtonText}>
                         {addressData ? 'Update Address' : 'Save Address'}
                     </Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </SafeAreaView>
     );
 };
 

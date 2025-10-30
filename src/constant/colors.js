@@ -11,7 +11,7 @@ export const BRAND = {
   pink: '#f386b9',
   sky: '#51c8ff',
 //   bg: "#F5F7FF",
-  bg: "#FFF",
+  bg: "#FFFFFF",
 
   text: "#1F2937",
   muted: "#6B7280",

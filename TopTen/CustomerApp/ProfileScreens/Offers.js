@@ -1,10 +1,15 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native'
 import React from 'react'
 import { CupponIcon } from '../../../src/SVGicons/icon'
-import BRAND from '../../../src/constant/color'
-import { s } from 'react-native-size-matters'
+import { s, vs, ms } from 'react-native-size-matters'
+import { useSelector } from 'react-redux'
+import { BRAND, DARK } from '../../../src/constant/colors'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const Offers = () => {
+  const Theme = useSelector(state => state.auth.Theme)
+  const colors = Theme ? DARK : BRAND
+
   const offers = [
     {
       id: 1,
@@ -33,84 +38,71 @@ const Offers = () => {
   ]
 
   return (
-    <ScrollView style={styles.container}>
-
-      {offers.map((offer) => (
-        <View key={offer.id} style={styles.offerCard}>
-          <CupponIcon />
-          <View style={styles.offerHeader}>
-            <Text style={styles.offerCode}>{offer.code}</Text>
-            <TouchableOpacity style={styles.applyButton}>
-              <Text style={styles.applyButtonText}>Apply</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.bg }]}>
+        {offers.map((offer) => (
+          <View key={offer.id} style={[styles.offerCard, { 
+            backgroundColor: colors.white,
+            borderColor: colors.border 
+          }]}>
+            <CupponIcon />
+            <View style={styles.offerHeader}>
+              <Text style={[styles.offerCode, { color: colors.text }]}>{offer.code}</Text>
+              <TouchableOpacity style={[styles.applyButton, { backgroundColor: colors.orange }]}>
+                <Text style={styles.applyButtonText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.offerDescription, { color: colors.text }]}>{offer.description}</Text>
+            <Text style={[styles.offerNote, { color: colors.muted }]}>{offer.note}</Text>
           </View>
-          <Text style={styles.offerDescription}>{offer.description}</Text>
-          <Text style={styles.offerNote}>{offer.note}</Text>
-        </View>
-      ))}
-    </ScrollView>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
 export default Offers
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#333',
+    padding: s(12)
   },
   offerCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    borderRadius: s(8),
+    padding: s(12),
+    marginBottom: vs(12),
+    borderWidth: s(0.5),
   },
   offerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: vs(6)
   },
   offerCode: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: BRAND.text,
+    fontSize: ms(14),
+    fontWeight: 'bold'
   },
   applyButton: {
-    backgroundColor: BRAND.orange,
-    paddingHorizontal: s(25),
-    paddingVertical: 8,
-    borderRadius: s(7),
+    paddingHorizontal: s(16),
+    paddingVertical: vs(6),
+    borderRadius: s(5)
   },
   applyButtonText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: ms(12)
   },
   offerDescription: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 4,
+    fontSize: ms(12),
+    marginBottom: vs(2)
   },
   offerNote: {
-    fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
-  },
+    fontSize: ms(10),
+    fontStyle: 'italic'
+  }
 })

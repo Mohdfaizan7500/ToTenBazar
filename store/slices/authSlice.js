@@ -37,6 +37,7 @@ export const fetchUserProfile = createAsyncThunk(
           "Content-Type": "application/json",
         },
       });
+      // console.log(response)
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -146,6 +147,7 @@ export const getOtp = createAsyncThunk(
 );
 
 // Async thunk for refreshing tokens
+// Async thunk for refreshing tokens
 export const refreshToken = createAsyncThunk(
   "auth/refreshToken",
   async (_, { rejectWithValue }) => {
@@ -155,11 +157,13 @@ export const refreshToken = createAsyncThunk(
         throw new Error("No refresh token available");
       }
 
-      const response = await fetch(`${BASE_URL}/auth/refresh`, {
+      const response = await fetch(`${BASE_URL}/auth/token/refresh`, { // Added missing slash
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh: refreshToken }),
       });
+
+      console.log("Refresh token response status:", response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -168,11 +172,14 @@ export const refreshToken = createAsyncThunk(
 
       const data = await response.json();
 
-      if (data.access && data.refresh) {
+      if (data.access) {
         await AsyncStorage.setItem("accessToken", data.access);
-        await AsyncStorage.setItem("refreshToken", data.refresh);
+        // Only update refresh token if a new one is provided
+        if (data.refresh) {
+          await AsyncStorage.setItem("refreshToken", data.refresh);
+        }
       } else {
-        throw new Error("Invalid refresh response");
+        throw new Error("Invalid refresh response - no access token");
       }
 
       return {
@@ -182,11 +189,12 @@ export const refreshToken = createAsyncThunk(
 
     } catch (error) {
       console.error('Token refresh error:', error);
+      // Clear tokens on refresh failure
+      await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
       return rejectWithValue(error.message || "Token refresh failed");
     }
   }
 );
-
 // Async thunk to check auth status on app launch/load
 export const checkAuthStatus = createAsyncThunk(
   "auth/checkAuthStatus",
@@ -324,7 +332,7 @@ const authSlice = createSlice({
       const cleanUrlValue = cleanUrl(action.payload);
       state.profile_pic = cleanUrlValue;
     },
-    setTheme :(state,action)=>{
+    setTheme: (state, action) => {
       state.Theme = action.payload
     },
     clearTokens: (state) => {

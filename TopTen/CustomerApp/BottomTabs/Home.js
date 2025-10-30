@@ -1,12 +1,15 @@
-import { ActivityIndicator, Animated, Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Animated, Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, RefreshControl } from 'react-native'
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
-import BRAND from '../../../src/constant/color'
+import { DARK, BRAND } from '../../../src/constant/colors'
 import { BagIcon, BellIcon, DownArrowIcon, FavoriteIcon, LocationIcon, SearchIcon } from '../../../src/SVGicons/icon'
 import { s, vs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import LinearGradient from 'react-native-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+// Import your API actions
+import { fetchAllGroups, fetchBannerConfig, fetchBanners, fetchCategories, fetchGroups } from '../../../store/slices/userSlice'
 
 const Home = () => {
   // Refs and state
@@ -14,7 +17,11 @@ const Home = () => {
   const mainFlatListRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [visibleSections, setVisibleSections] = useState(new Set(['banner', 'categories']))
+  const [refreshing, setRefreshing] = useState(false)
+  const Theme = useSelector(state => state?.auth?.Theme)
   const navigation = useNavigation()
+  const dispatch = useDispatch()
+  const colors = Theme ? DARK : BRAND;
 
   // Header animation values
   const scrollY = useRef(new Animated.Value(0)).current
@@ -24,11 +31,11 @@ const Home = () => {
 
   // Lazy loading thresholds
   const LAZY_LOAD_THRESHOLD = 2
-  const ITEM_HEIGHT_ESTIMATE = 200
+  const ITEM_HEIGHT_ESTIMATE = 180
 
   // Header animation constants
-  const HEADER_HEIGHT = vs(160)
-  const SCROLL_THRESHOLD = 30
+  const HEADER_HEIGHT = vs(140)
+  const SCROLL_THRESHOLD = 25
 
   // Redux selectors
   const Banner_Config = useSelector(state => state.user.Baner_Config)
@@ -94,29 +101,27 @@ const Home = () => {
       weight: "70 g",
       price: 8,
       mrp: 10
-    },
-    {
-      title: "Lay's Classic Potato Chips",
-      image: require('../../../src/images/cocacola.png'),
-      weight: "50 g",
-      price: 15,
-      mrp: 20
-    },
-    {
-      title: "Colgate Strong Teeth Toothpaste",
-      image: require('../../../src/images/cocacola.png'),
-      weight: "100 g",
-      price: 6,
-      mrp: 8
-    },
-    {
-      title: "Amul Butter",
-      image: require('../../../src/images/cocacola.png'),
-      weight: "100 g",
-      price: 25,
-      mrp: 30
     }
   ], [])
+
+  // Refresh function
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      console.log('refres data ')
+      // Dispatch all API calls needed for home screen
+      await Promise.all([
+        dispatch(fetchBannerConfig()),
+        dispatch(fetchCategories()),
+        dispatch(fetchAllGroups())
+        // Add other API calls that your home screen needs
+      ]);
+    } catch (error) {
+      console.log('Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch]);
 
   // Smoother header animation handler
   const handleHeaderAnimation = useCallback((currentOffset) => {
@@ -125,7 +130,7 @@ const Home = () => {
 
     if (isAnimating.current) return;
 
-    if (deltaY > 5 && currentScrollY > SCROLL_THRESHOLD) {
+    if (deltaY > 4 && currentScrollY > SCROLL_THRESHOLD) {
       isAnimating.current = true;
       Animated.spring(headerTranslateY, {
         toValue: -HEADER_HEIGHT,
@@ -135,7 +140,7 @@ const Home = () => {
       }).start(() => {
         isAnimating.current = false;
       });
-    } else if (deltaY < -5) {
+    } else if (deltaY < -4) {
       isAnimating.current = true;
       Animated.spring(headerTranslateY, {
         toValue: 0,
@@ -168,7 +173,7 @@ const Home = () => {
 
         if (allgroupnames) {
           allgroupnames.forEach((groupName, index) => {
-            const sectionPosition = (index * ITEM_HEIGHT_ESTIMATE) + 600;
+            const sectionPosition = (index * ITEM_HEIGHT_ESTIMATE) + 500;
             if (sectionPosition <= scrollPosition + (screenHeight * LAZY_LOAD_THRESHOLD)) {
               newVisibleSections.add(`group-${index}`);
             }
@@ -204,7 +209,7 @@ const Home = () => {
   // Event handlers
   const handleScrollEnd = useCallback((event) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x
-    const cardWidth = Dimensions.get('window').width - 50 + s(30)
+    const cardWidth = Dimensions.get('window').width - 40 + s(25)
     const index = Math.round(contentOffsetX / cardWidth)
     setCurrentIndex(index)
   }, [])
@@ -220,7 +225,8 @@ const Home = () => {
         .replace(/\n/g, ' ')
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' & ')
+        .join(' & '),
+      item: item
     });
   }, [navigation])
 
@@ -243,16 +249,10 @@ const Home = () => {
         index === currentIndex && styles.activeCard
       ]}>
 
-      <View style={styles.cardContent}>
-        <Text style={styles.cardText}>{item?.banner_name}</Text>
-        <TouchableOpacity style={styles.ShopNowButton}>
-          <Text style={styles.ShopNowButtonText}>Shop Now</Text>
-        </TouchableOpacity>
-      </View>
       <Image
         source={{ uri: item.banner_img }}
         style={styles.imageSize}
-        resizeMode='cover'
+        resizeMode='stretch'
       />
     </LinearGradient>
   ), [currentIndex])
@@ -266,29 +266,29 @@ const Home = () => {
 
   const renderHorizontalCategoryItem = useCallback(({ item, index }) => (
     <View style={styles.categoryItemWrapper}>
-      <View style={styles.categoriesContainer}>
+      <View style={[styles.categoriesContainer, { backgroundColor: colors.gray[200] }]}>
         <Image
           source={item.image}
           style={styles.categoryImageFull}
           resizeMode='cover'
         />
       </View>
-      <Text style={styles.categoryItemTitle}>{item.title}</Text>
+      <Text style={[styles.categoryItemTitle, { color: colors.text }]}>{item.title}</Text>
     </View>
   ), [])
 
   const renderGridCategoryItem = useCallback(({ item, index }) => (
     <TouchableOpacity
-      style={styles.gridCategoryItem}
+      style={[styles.gridCategoryItem, { backgroundColor: colors.bg }]}
       onPress={() => handleCategoryPress(item)}>
-      <View style={styles.categoriesBox}>
+      <View style={[styles.categoriesBox, { backgroundColor: colors.gray[200] }]}>
         <Image
           source={{ uri: item?.images?.[0]?.image_url }}
           style={styles.categoryImageFull}
           resizeMode='cover'
         />
       </View>
-      <Text style={styles.gridCategoryTitle}>
+      <Text style={[styles.gridCategoryTitle, { color: colors.text }]}>
         {formatString(item.category)}
       </Text>
     </TouchableOpacity>
@@ -298,12 +298,12 @@ const Home = () => {
     const isApiData = item?.product_image && Array.isArray(item.product_image);
 
     return (
-      <TouchableOpacity style={styles.productCard} onPress={() => {
+      <TouchableOpacity style={[styles.productCard, { backgroundColor: colors.white }]} onPress={() => {
         console.log(item),
-        navigation.navigate('AboutProductScreen', { item })
+          navigation.navigate('AboutProductScreen', { item })
       }}>
-        <View style={styles.productImageContainer}>
-          <View style={{ borderRadius: s(8), overflow: "hidden", backgroundColor: BRAND.muted, }}>
+        <View style={[styles.productImageContainer]}>
+          <View style={{ borderRadius: s(6), overflow: "hidden", backgroundColor: BRAND.muted, }}>
             <Image
               source={isApiData ? { uri: item?.product_image[0]?.image_url } : item.image}
               style={styles.productImage}
@@ -316,7 +316,7 @@ const Home = () => {
             {isApiData ? item?.product_name : item.title}
           </Text>
           <View style={styles.productDetails}>
-            <View style={{ width: s(70), }}>
+            <View style={{ width: s(65), }}>
               <Text style={styles.productWeight} numberOfLines={1}>
                 {isApiData ? (item.description || 'Product description') : item.weight}
               </Text>
@@ -354,8 +354,8 @@ const Home = () => {
 
       return (
         <View key={`${groupName}-${index}`} style={{ width: "100%", marginBottom: 0 }}>
-          <View style={[styles.HeadingContainer, styles.bestDealHeading]}>
-            <Text style={styles.HeadingText}>{groupName}</Text>
+          <View style={[styles.HeadingContainer, styles.bestDealHeading, { backgroundColor: colors.bg }]}>
+            <Text style={[styles.HeadingText, { color: colors.text }]}>{groupName}</Text>
             <Text style={styles.SeeAllText} onPress={() => {
               console.log(displayData)
               navigation.navigate('Catlog', { title: groupName })
@@ -364,7 +364,7 @@ const Home = () => {
 
           {displayData && displayData.length > 0 ? (
             <FlatList
-              contentContainerStyle={styles.productCardFlatlist}
+              contentContainerStyle={[styles.productCardFlatlist, { backgroundColor: colors.bg }]}
               horizontal
               data={displayData}
               keyExtractor={(item, itemIndex) => `${groupName}-${itemIndex}`}
@@ -395,15 +395,15 @@ const Home = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               pagingEnabled
-              contentContainerStyle={styles.flatListCard}
+              contentContainerStyle={[styles.flatListCard, {}]}
               data={slicedBannerConfig}
               keyExtractor={(item, index) => index.toString()}
               renderItem={renderBannerItem}
               onMomentumScrollEnd={handleScrollEnd}
               onScrollBeginDrag={handleScrollBegin}
               getItemLayout={(data, index) => ({
-                length: Dimensions.get('window').width - 50 + s(30),
-                offset: (Dimensions.get('window').width - 50 + s(30)) * index,
+                length: Dimensions.get('window').width - 40 + s(25),
+                offset: (Dimensions.get('window').width - 40 + s(25)) * index,
                 index,
               })}
               initialNumToRender={3}
@@ -424,7 +424,7 @@ const Home = () => {
 
         {/* Horizontal Categories - Always visible */}
         <FlatList
-          contentContainerStyle={styles.categoriesContainerFlatlist}
+          contentContainerStyle={[styles.categoriesContainerFlatlist, { backgroundColor: colors.bg }]}
           data={categoriesitem}
           horizontal
           keyExtractor={(item, index) => index.toString()}
@@ -435,16 +435,16 @@ const Home = () => {
         />
 
         {/* Shop By Category Header - Always visible */}
-        <View style={styles.HeadingContainer}>
-          <Text style={styles.HeadingText}>Shop By Category</Text>
+        <View style={[styles.HeadingContainer, { backgroundColor: colors.bg }]}>
+          <Text style={[styles.HeadingText, { color: colors.text }]}>Shop By Category</Text>
           <Text style={styles.SeeAllText} onPress={() => navigation.navigate('Categories')}>See All</Text>
         </View>
 
         {/* Grid Categories - Always visible */}
         {visibleSections.has('categories') && (
-          <View style={{ backgroundColor: BRAND.bg, marginBottom: s(15) }}>
+          <View style={{ backgroundColor: colors.bg, marginBottom: s(12) }}>
             <FlatList
-              contentContainerStyle={styles.gridCategoriesContainer}
+              contentContainerStyle={[styles.gridCategoriesContainer, {}]}
               data={randomCategories}
               numColumns={4}
               keyExtractor={(item, index) => index.toString()}
@@ -491,7 +491,7 @@ const Home = () => {
   ]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar backgroundColor={BRAND.primary} barStyle="dark-content" />
 
       {/* Fixed Background Container - Separate from animated header */}
@@ -511,41 +511,41 @@ const Home = () => {
         <View style={styles.headerContent}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.locationContainer} onPress={() => navigation.navigate('Address')}>
-              <View style={styles.iconCircle}>
-                <LocationIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+              <View style={[styles.iconCircle, { backgroundColor: colors.white }]}>
+                <LocationIcon width={s(20)} height={s(20)} stroke={BRAND.orange} />
               </View>
               <View>
                 <View style={styles.addressHeader}>
                   <Text style={styles.homeText}>Home</Text>
-                  <DownArrowIcon width={s(22)} height={s(22)} stroke={BRAND.white} />
+                  <DownArrowIcon width={s(20)} height={s(20)} stroke={BRAND.white} />
                 </View>
                 <Text style={styles.address}>Karol Bagh, New Delhi</Text>
               </View>
             </TouchableOpacity>
 
             <View style={styles.iconsContainer}>
-              <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notification')}>
-                <BellIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+              <TouchableOpacity style={[styles.iconCircle, { backgroundColor: colors.bg }]} onPress={() => navigation.navigate('Notification')}>
+                <BellIcon width={s(20)} height={s(20)} stroke={BRAND.orange} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('MyCart')}>
-                <BagIcon width={s(22)} height={s(22)} stroke={BRAND.orange} />
+              <TouchableOpacity style={[styles.iconCircle, { backgroundColor: colors.bg }]} onPress={() => navigation.navigate('MyCart')}>
+                <BagIcon width={s(20)} height={s(20)} stroke={BRAND.orange} />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <SearchIcon width={s(22)} height={s(22)} stroke={BRAND.muted} />
+          <View style={[styles.searchContainer, { backgroundColor: colors.gray[200] }]}>
+            <SearchIcon width={s(20)} height={s(20)} stroke={colors.muted} />
             <TextInput
               placeholder='Search'
-              placeholderTextColor={BRAND.muted}
+              placeholderTextColor={colors.muted}
               style={styles.searchinput}
             />
           </View>
         </View>
       </Animated.View>
 
-      {/* Main Content with Lazy Loading */}
+      {/* Main Content with Lazy Loading and Pull to Refresh */}
       <FlatList
         ref={mainFlatListRef}
         style={styles.mainFlatList}
@@ -562,6 +562,20 @@ const Home = () => {
         updateCellsBatchingPeriod={50}
         contentContainerStyle={styles.flatListContent}
         decelerationRate="normal"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[BRAND.primary]} // For Android
+            tintColor={BRAND.primary} // For iOS
+            progressBackgroundColor={colors.bg}
+            title="Pull to refresh"
+            titleColor={colors.text}
+          />
+        }
+        // Additional props for better pull-to-refresh experience
+        overScrollMode="always"
+        alwaysBounceVertical={true}
       />
     </SafeAreaView>
   )
@@ -577,15 +591,15 @@ const styles = StyleSheet.create({
   // Fixed background that doesn't move
   bgContainer: {
     width: "100%",
-    height: vs(200),
-    borderBottomRightRadius: vs(60),
-    borderBottomLeftRadius: vs(60),
+    height: vs(180),
+    borderBottomRightRadius: vs(50),
+    borderBottomLeftRadius: vs(50),
     backgroundColor: BRAND.primary,
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 0, // Lowest zIndex - stays behind everything
+    zIndex: 0,
   },
   // Animated header container (content only, no background)
   headerContainer: {
@@ -593,105 +607,103 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 20, // Highest zIndex - stays on top
+    zIndex: 20,
     elevation: 10,
   },
   headerContent: {
     width: '100%',
-    // backgroundColor:"red"
   },
   mainFlatList: {
     flex: 1,
-    zIndex: 10, // Middle zIndex - scrolls behind header but above background
-    elevation: 5,
+    zIndex: 10,
   },
   flatListContent: {
-    paddingTop: vs(110), // This should match HEADER_HEIGHT
-    paddingBottom: vs(10),
+    paddingTop: vs(100),
+    paddingBottom: vs(8),
   },
   header: {
     width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: s(20),
-    paddingTop: vs(10),
+    paddingHorizontal: s(16),
+    paddingTop: vs(8),
   },
   locationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: s(10),
+    gap: s(8),
   },
   addressHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: s(5),
+    gap: s(4),
   },
   iconsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: s(10),
+    gap: s(8),
   },
   iconCircle: {
     backgroundColor: BRAND.white,
-    padding: s(10),
+    padding: s(8),
     borderRadius: s(100),
-    width: s(35),
-    height: s(35),
+    width: s(32),
+    height: s(32),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   searchContainer: {
     width: "90%",
     backgroundColor: BRAND.white,
-    height: vs(40),
+    height: vs(36),
     borderRadius: s(100),
     alignSelf: "center",
-    marginTop: vs(10),
-    marginBottom: vs(10),
+    marginTop: vs(8),
+    marginBottom: vs(8),
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: s(20),
-    gap: s(10),
+    paddingHorizontal: s(16),
+    gap: s(8),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
   searchinput: {
     flex: 1,
-    fontSize: s(16),
+    fontSize: s(14),
     color: BRAND.text,
   },
   homeText: {
     color: BRAND.white,
-    fontSize: s(14),
+    fontSize: s(12),
     fontWeight: '600',
   },
   address: {
     color: BRAND.white,
-    fontSize: s(12),
+    fontSize: s(11),
     opacity: 0.9,
   },
   scrollingCardView: {
     width: "100%",
     alignItems: "center",
-    paddingTop: vs(-20)
+    paddingTop: vs(-16)
   },
   card: {
-    width: Dimensions.get('window').width - s(40),
-    height: vs(130),
+    width: Dimensions.get('window').width - s(32),
+    height: vs(120),
     backgroundColor: BRAND.muted,
-    marginHorizontal: s(10),
-    paddingHorizontal: s(10),
-    borderRadius: s(12),
+    marginHorizontal: s(8),
+    overflow: "hidden",
+    borderRadius: s(10),
     justifyContent: 'space-between',
-    elevation: 5,
+    elevation: 4,
     opacity: 0.7,
     flexDirection: 'row',
     alignItems: 'center',
@@ -701,69 +713,41 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.pink,
     flexDirection: "row"
   },
-  cardContent: {
-    width: '65%',
-    justifyContent: 'space-between',
-    height: '100%',
-    paddingVertical: vs(10),
-    paddingLeft: s(10),
-  },
-  cardText: {
-    color: BRAND.white,
-    fontSize: s(16),
-    fontWeight: '800',
-  },
   flatListCard: {
-    paddingVertical: vs(5),
+    paddingVertical: vs(4),
   },
   pager: {
-    width: s(8),
-    height: s(8),
-    borderRadius: s(5),
+    width: s(6),
+    height: s(6),
+    borderRadius: s(4),
     backgroundColor: BRAND.border,
   },
   activePager: {
     backgroundColor: BRAND.orange,
-    width: s(20),
+    width: s(16),
   },
   pagerFlatList: {
     alignSelf: 'center',
-    gap: s(10),
-    marginTop: vs(10),
-  },
-  ShopNowButton: {
-    backgroundColor: BRAND.orange,
-    width: 100,
-    verticalAlign: "bottom",
-    paddingHorizontal: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: vs(5),
-    borderRadius: s(10)
-  },
-  ShopNowButtonText: {
-    color: BRAND.white,
-    fontSize: s(14),
-    fontWeight: '500'
+    gap: s(8),
+    marginTop: vs(8),
   },
   imageSize: {
-    width: s(100),
-    height: vs(110),
-    borderRadius: s(12),
+    width: "100%",
+    height: "100%",
   },
   categoriesContainer: {
-    width: Dimensions.get('window').width / s(4) - s(2),
-    height: Dimensions.get('window').width / s(4) - s(2),
-    borderRadius: s(12),
-    marginRight: s(10),
+    width: Dimensions.get('window').width / s(4) - s(4),
+    height: Dimensions.get('window').width / s(4) - s(4),
+    borderRadius: s(10),
+    marginRight: s(8),
     backgroundColor: BRAND.border,
     alignItems: "center",
     justifyContent: "center",
-    padding: s(10)
+    padding: s(8)
   },
   categoriesContainerFlatlist: {
-    paddingVertical: s(10),
-    paddingHorizontal: s(10),
+    paddingVertical: s(8),
+    paddingHorizontal: s(8),
     backgroundColor: BRAND.bg
   },
   HeadingContainer: {
@@ -771,84 +755,84 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: s(15),
+    paddingHorizontal: s(12),
     backgroundColor: BRAND.bg
   },
   HeadingText: {
-    fontSize: s(16),
-    fontWeight: '800',
+    fontSize: s(14),
+    fontWeight: '700',
     color: BRAND.text
   },
   SeeAllText: {
     color: BRAND.orange,
-    fontSize: s(14)
+    fontSize: s(12)
   },
   categoriesBox: {
-    width: Dimensions.get('window').width / s(4) - s(20),
-    height: Dimensions.get('window').width / s(4) - s(20),
-    borderRadius: s(12),
-    marginRight: s(5),
+    width: Dimensions.get('window').width / s(4) - s(16),
+    height: Dimensions.get('window').width / s(4) - s(16),
+    borderRadius: s(10),
+    marginRight: s(4),
     backgroundColor: '#828d840d',
     alignItems: "center",
     justifyContent: "center",
     padding: s(2)
   },
   productCard: {
-    width: s(150),
-    height: vs(200),
+    width: s(140),
+    height: vs(180),
     backgroundColor: BRAND.white,
-    marginRight: s(10),
-    borderRadius: s(12),
-    paddingHorizontal: s(10),
-    paddingTop: s(5),
-    elevation: 2
+    marginRight: s(8),
+    borderRadius: s(10),
+    paddingHorizontal: s(8),
+    paddingTop: s(4),
+    elevation: 2,
   },
   productCardFlatlist: {
-    paddingHorizontal: s(10),
-    paddingVertical: s(10),
+    paddingHorizontal: s(8),
+    paddingVertical: s(8),
     backgroundColor: BRAND.bg
   },
   categoryItemWrapper: {
     alignItems: "center",
-    gap: s(5)
+    gap: s(4)
   },
   categoryImageFull: {
     width: "100%",
     height: "100%"
   },
   categoryItemTitle: {
-    fontSize: s(12),
+    fontSize: s(11),
     color: BRAND.text
   },
   gridCategoriesContainer: {
     alignItems: "center",
-    paddingVertical: s(10),
+    paddingVertical: s(8),
     backgroundColor: BRAND.bg,
   },
   gridCategoryItem: {
     backgroundColor: BRAND.bg,
     alignItems: "center",
-    gap: s(5),
+    gap: s(4),
     width: Dimensions.get('window').width / 4,
-    marginTop: s(10)
+    marginTop: s(8)
   },
   gridCategoryTitle: {
     textAlign: "center",
-    fontSize: s(12),
+    fontSize: s(11),
     color: BRAND.text
   },
   bestDealHeading: {
-    marginTop: vs(10)
+    marginTop: vs(8)
   },
   productImageContainer: {
     width: "100%",
     height: "55%",
-    borderRadius: s(12)
+    borderRadius: s(10)
   },
   favoriteIcon: {
     position: "absolute",
-    top: s(10),
-    right: s(10),
+    top: s(8),
+    right: s(8),
     zIndex: 1
   },
   productImage: {
@@ -860,9 +844,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-evenly"
   },
   productTitle: {
-    fontSize: s(12),
+    fontSize: s(11),
     color: BRAND.text,
-    fontWeight: "800"
+    fontWeight: "700"
   },
   productDetails: {
     flexDirection: "row",
@@ -870,57 +854,57 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   productWeight: {
-    fontSize: s(12),
+    fontSize: s(11),
     color: BRAND.muted
   },
   productPrice: {
-    fontSize: s(14),
+    fontSize: s(12),
     color: BRAND.text,
     fontWeight: '600'
   },
   productMrp: {
     color: BRAND.muted,
     textDecorationLine: "line-through",
-    fontSize: s(12)
+    fontSize: s(11)
   },
   addButton: {
     backgroundColor: BRAND.primary,
-    paddingHorizontal: s(15),
-    paddingVertical: s(5),
-    borderRadius: s(6)
+    paddingHorizontal: s(12),
+    paddingVertical: s(4),
+    borderRadius: s(5)
   },
   addButtonText: {
     color: BRAND.white,
-    fontSize: s(14),
+    fontSize: s(12),
     fontWeight: '500'
   },
   loadingContainer: {
-    padding: s(20),
+    padding: s(16),
     alignItems: 'center'
   },
   loadingText: {
     color: BRAND.text,
-    fontSize: s(14)
+    fontSize: s(12)
   },
   errorContainer: {
-    padding: s(20),
+    padding: s(16),
     alignItems: 'center'
   },
   errorText: {
     color: BRAND.error,
-    fontSize: s(14)
+    fontSize: s(12)
   },
   noProductsText: {
     textAlign: 'center',
     color: BRAND.muted,
-    fontSize: s(14),
-    padding: s(20)
+    fontSize: s(12),
+    padding: s(16)
   },
   lazyPlaceholder: {
     width: "100%",
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: BRAND.bg,
-    marginBottom: 10,
+    marginBottom: 8,
   }
 })
