@@ -37,8 +37,10 @@ const CustomerAppNav = () => {
             color: Theme ? DARK.text :BRAND.text,
         },
         headerStyle: {
-            elevation: 0,
+            elevation: 5,
             shadowOpacity: 0,
+            height:vs(45),
+            // borderBottomWidth:1,
             backgroundColor: Theme ? DARK.bg : BRAND.bg,
         },
         headerLeft: () => (

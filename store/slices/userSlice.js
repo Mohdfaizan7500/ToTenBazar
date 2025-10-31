@@ -104,7 +104,10 @@ export const fetchAllGroups = createAsyncThunk(
 
 export const fetchSubcategories = createAsyncThunk(
     "prod/fetchSubcategories",
-    async (category_id, { getState, rejectWithValue }) => {
+    async ({ category_id, type }, { getState, rejectWithValue }) => {
+        console.log('id:', category_id, 'type:', type)
+
+
         try {
             const state = getState();
             const accessToken = state.auth?.accessToken || await AsyncStorage.getItem('accessToken');
@@ -133,6 +136,51 @@ export const fetchSubcategories = createAsyncThunk(
         }
     }
 );
+
+export const fetchSubcategoryDetails = createAsyncThunk(
+    "prod/fetchSubcategoryDetails",
+    async ({ category_id, subcategory_id }, { getState, rejectWithValue }) => {
+        console.log("Fetching subcategory details for:", category_id, subcategory_id);
+
+        try {
+            const state = getState();
+            const accessToken =
+                state.auth?.accessToken || (await AsyncStorage.getItem("accessToken"));
+
+            const response = await fetch(
+                `${BASE_URL}/prod/get_subcategory?category_id=${category_id}&subcategory_id=${subcategory_id}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(
+                    errorData.message || "Failed to fetch subcategory details"
+                );
+            }
+
+            const data = await response.json();
+            console.log(`Subcategory details for ${subcategory_id}:`, data);
+
+            return {
+                // category_id,
+                // subcategory_id,
+                data,
+            };
+        } catch (error) {
+            return rejectWithValue(
+                error.message || "Failed to fetch subcategory details"
+            );
+        }
+    }
+);
+
 
 export const fetchUserAddress = createAsyncThunk(
     "user/fetchUserAddress",
@@ -339,6 +387,9 @@ const initialState = {
     categories: null,
     groupProducts: {},
     subcategories: {},
+    subcategoriesProduct: {},
+    isLoadingsubcategoriesProduct: false,
+    errorsubcategoriesProduct: null,
     isLoading: false,
     error: null,
     selectedAddress: null,
@@ -366,10 +417,34 @@ const userSlice = createSlice({
         },
         clearSubcategories: (state, action) => {
             state.subcategories = {}
+        },
+        clearSubcategoriesProduct: (state, action) => {
+            state.subcategoriesProduct = {}
         }
     },
     extraReducers: (builder) => {
         builder
+            // fetchSubcategoryDetails
+            .addCase(fetchSubcategoryDetails.pending, (state) => {
+                state.isLoadingsubcategoriesProduct = true;
+                state.errorsubcategoriesProduct = null;
+            })
+            .addCase(fetchSubcategoryDetails.fulfilled, (state, action) => {
+                state.isLoadingsubcategoriesProduct = false;
+                const { category_id, subcategory_id, data } = action.payload;
+
+                if (!state.subcategories[category_id]) {
+                    state.subcategories[category_id] = {};
+                }
+
+                // Store each subcategory data under its own ID
+                state.subcategoriesProduct= data;
+            })
+            .addCase(fetchSubcategoryDetails.rejected, (state, action) => {
+                state.isLoadingsubcategoriesProduct = false;
+                state.errorsubcategoriesProduct = action.payload;
+            })
+
             // Add this to your existing extraReducers builder
             .addCase(fetchSubcategories.pending, (state) => {
                 state.isLoading = true;
@@ -526,6 +601,7 @@ export const {
     clearGroupProducts, clearGroupProductsByGroup,
     setSelectedAddress,
     clearSubcategories,
+    clearSubcategoriesProduct
 
 } = userSlice.actions;
 

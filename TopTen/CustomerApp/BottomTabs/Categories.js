@@ -111,7 +111,8 @@ const Categories = () => {
                     .replace(/\n/g, ' ') // remove new lines
                     .split(' ') // split into words
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // capitalize first letter of each word
-                    .join(' & ') // join words with &
+                    .join(' & '), // join words with &,
+                     item: item
                 })
               }}
 

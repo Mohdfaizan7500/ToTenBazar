@@ -226,7 +226,7 @@ const Home = () => {
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' & '),
-      item: item
+      item: item, type: 'catogry'
     });
   }, [navigation])
 
@@ -240,21 +240,33 @@ const Home = () => {
 
   // Render functions
   const renderBannerItem = useCallback(({ item, index }) => (
-    <LinearGradient
-      colors={['red', 'blue']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
+    <TouchableOpacity
+
       style={[
         styles.card,
         index === currentIndex && styles.activeCard
-      ]}>
+      ]}
+      onPress={() => {
+        console.log(item)
+        navigation.navigate('Catlog', {
+          title: item.banner_name, type: 'banner', 
+          bannerId: item.id,
+          subcategoryId: 13
+
+        })
+
+      }}
+    >
 
       <Image
         source={{ uri: item.banner_img }}
         style={styles.imageSize}
         resizeMode='stretch'
       />
-    </LinearGradient>
+      <View style={{ position: "absolute", bottom: s(10), left: s(10) }}>
+        <Text style={styles.Banner_Name}>{item.banner_name}</Text>
+      </View>
+    </TouchableOpacity>
   ), [currentIndex])
 
   const renderPagerItem = useCallback(({ item, index }) => (
@@ -358,7 +370,7 @@ const Home = () => {
             <Text style={[styles.HeadingText, { color: colors.text }]}>{groupName}</Text>
             <Text style={styles.SeeAllText} onPress={() => {
               console.log(displayData)
-              navigation.navigate('Catlog', { title: groupName })
+              navigation.navigate('Catlog', { title: groupName, type: 'group' })
             }}>See All</Text>
           </View>
 
@@ -906,5 +918,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: BRAND.bg,
     marginBottom: 8,
+  },
+  Banner_Name: {
+    fontSize: s(20),
+    color: '#fff',
+    fontWeight: '800'
   }
 })

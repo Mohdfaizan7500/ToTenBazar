@@ -1,46 +1,64 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, Image, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, Image, Dimensions, TouchableOpacity, ActivityIndicator, StatusBar } from 'react-native';
 import BRAND from '../../../src/constant/color';
 import { s, vs, ms } from 'react-native-size-matters';
 import { SearchIcon } from '../../../src/SVGicons/icon';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearSubcategories, fetchSubcategories } from '../../../store/slices/userSlice';
+import { clearSubcategories, clearSubcategoriesProduct, fetchSubcategories, fetchSubcategoryDetails } from '../../../store/slices/userSlice';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CategoriesCatlog = () => {
     const dispatch = useDispatch();
-    const { subcategories, isLoading } = useSelector(state => state.user);
+    const { subcategories, isLoading, subcategoriesProduct } = useSelector(state => state.user);
     const [selectedSubcategory, setSelectedSubcategory] = useState(null);
-
+    const [productsLoading, setProductsLoading] = useState(true);
     const route = useRoute();
     const item = route?.params?.item;
+    const type = route?.params?.type
+    console.log('type:', type)
+    console.log("subcategoriesProduct:", subcategoriesProduct)
     const navigation = useNavigation();
 
-    // Memoized data
     const currentCategoryId = item?.id;
     const currentSubcategories = useMemo(() =>
         subcategories[currentCategoryId]?.data || [],
         [subcategories, currentCategoryId]
     );
 
-    // Memoized handlers
-    const handleFetchSubcategories = useCallback((categoryId) => {
-        dispatch(fetchSubcategories(categoryId));
+    // Optimized handlers
+    const handleFetchSubcategories = useCallback(async (id, type) => {
+        const result = await dispatch(fetchSubcategories({ category_id: id, type: type }));
+        console.log('result 32:', result)
+        if (result?.payload?.category_id) {
+            console.log(result.payload.data.data[0].id)
+            handleFetchSubcategoriesDetails(result?.payload?.category_id, result.payload.data.data[0].id)
+        }
     }, [dispatch]);
+
+    const handleFetchSubcategoriesDetails = useCallback((category_id, subcategory_id) => {
+        dispatch(clearSubcategoriesProduct())
+        dispatch(fetchSubcategoryDetails({ category_id: category_id, subcategory_id: subcategory_id }))
+    }, [dispatch])
 
     const handleSubcategoryPress = useCallback((subcategory) => {
         setSelectedSubcategory(subcategory);
+        console.log(subcategory);
+        handleFetchSubcategoriesDetails(subcategory.category,subcategory.id)
+        // Simulate products loading when subcategory changes
+        setProductsLoading(true);
+        setTimeout(() => setProductsLoading(false), 1000);
     }, []);
 
     // Effects
     useEffect(() => {
-        if (item?.id) {
-            handleFetchSubcategories(item.id);
+        if (item?.id && type) {
+            handleFetchSubcategories(item.id, type);
+            setProductsLoading(true);
+            setTimeout(() => setProductsLoading(false), 1500);
         }
-        return () => {
-            dispatch(clearSubcategories());
-        };
-    }, [item?.id, handleFetchSubcategories, dispatch]);
+        return () => dispatch(clearSubcategories());
+    }, [item?.id]);
 
     useEffect(() => {
         if (currentSubcategories.length > 0 && !selectedSubcategory) {
@@ -48,38 +66,61 @@ const CategoriesCatlog = () => {
         }
     }, [currentSubcategories, selectedSubcategory]);
 
-    // Memoized utility functions
+    // Memoized utilities
     const getImageSource = useCallback((subcategory) => {
-        const firstImage = subcategory.images?.[0];
-        if (firstImage?.image_url?.trim()) {
-            return { uri: firstImage.image_url };
-        }
-        return require('../../../src/images/ladyfinger.png');
+        const imageUrl = subcategory.images?.[0]?.image_url?.trim() || subcategory.image?.[0]?.image_url?.trim();
+        return imageUrl ? { uri: imageUrl } : require('../../../src/images/default.jpg');
     }, []);
 
-    const getSubcategoryName = useCallback((subcategory) => {
-        return subcategory.sc_name || subcategory.name || subcategory.title || 'Unnamed Category';
-    }, []);
+    const capitalizeFirstLetter = useCallback((str) =>
+        str ? str.charAt(0).toUpperCase() + str.slice(1) : str
+        , []);
 
-    // Static product data
+    const getSubcategoryName = useCallback((subcategory) =>
+        capitalizeFirstLetter(subcategory.sc_name || subcategory.name || subcategory.title) || 'Unnamed Category'
+        , []);
+
+    // Static data
     const productData = useMemo(() => [
-        {
-            id: 1,
-            title: 'Hybrid Tomato (Tamatar)',
-            image: require('../../../src/images/Tomato.png'),
-            weight: 500,
-            price: 45,
-        },
-        {
-            id: 2,
-            title: 'Lady Finger (Bhindi)',
-            image: require('../../../src/images/ladyfinger.png'),
-            weight: 500,
-            price: 45,
-        },
+        { id: 1, title: 'Hybrid Tomato (Tamatar)', image: require('../../../src/images/Tomato.png'), weight: 500, price: 45 },
+        { id: 2, title: 'Lady Finger (Bhindi)', image: require('../../../src/images/ladyfinger.png'), weight: 500, price: 45 },
     ], []);
 
-    // Memoized render items
+    // Skeleton Loaders
+    const SubcategorySkeleton = useCallback(() => (
+        <View style={styles.skeletonItemView}>
+            <View style={styles.skeletonCategoryImage} />
+            <View style={styles.skeletonCategoryTitle} />
+        </View>
+    ), []);
+
+    const ProductSkeleton = useCallback(() => (
+        <View style={styles.skeletonCard}>
+            <View style={styles.skeletonProductImage} />
+            <View style={styles.skeletonProductName} />
+            <View style={styles.skeletonProductInfo}>
+                <View style={styles.skeletonProductDetails}>
+                    <View style={styles.skeletonProductWeight} />
+                    <View style={styles.skeletonProductPrice} />
+                </View>
+                <View style={styles.skeletonAddButton} />
+            </View>
+        </View>
+    ), []);
+
+    const renderSubcategorySkeleton = useCallback(() => (
+        Array.from({ length: 8 }).map((_, index) => (
+            <SubcategorySkeleton key={`skeleton-subcat-${index}`} />
+        ))
+    ), []);
+
+    const renderProductSkeleton = useCallback(() => (
+        Array.from({ length: 6 }).map((_, index) => (
+            <ProductSkeleton key={`skeleton-product-${index}`} />
+        ))
+    ), []);
+
+    // Render items
     const renderSubcategoryItem = useCallback(({ item: subcategory }) => (
         <TouchableOpacity
             style={[
@@ -89,15 +130,9 @@ const CategoriesCatlog = () => {
             onPress={() => handleSubcategoryPress(subcategory)}
         >
             <View style={styles.categoryImageView}>
-                <Image
-                    source={getImageSource(subcategory)}
-                    style={styles.categoryImage}
-                    resizeMode='contain'
-                />
+                <Image source={getImageSource(subcategory)} style={styles.categoryImage} resizeMode='contain' />
             </View>
-            <Text style={styles.categoryTitle}>
-                {getSubcategoryName(subcategory)}
-            </Text>
+            <Text style={styles.categoryTitle}>{getSubcategoryName(subcategory)}</Text>
         </TouchableOpacity>
     ), [selectedSubcategory, handleSubcategoryPress, getImageSource, getSubcategoryName]);
 
@@ -119,42 +154,14 @@ const CategoriesCatlog = () => {
         </TouchableOpacity>
     ), [navigation]);
 
-    // Memoized list components
-    const SubcategoriesList = useMemo(() => (
-        <FlatList
-            data={currentSubcategories}
-            keyExtractor={(item, index) => item.id ? item.id.toString() : `subcat-${index}`}
-            renderItem={renderSubcategoryItem}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No subcategories found</Text>
-                </View>
-            }
-        />
-    ), [currentSubcategories, renderSubcategoryItem]);
-
-    const ProductsList = useMemo(() => (
-        <FlatList
-            contentContainerStyle={styles.productListContent}
-            data={productData}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={2}
-            renderItem={renderProductItem}
-            showsVerticalScrollIndicator={false}
-        />
-    ), [productData, renderProductItem]);
-
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
+            <StatusBar backgroundColor={BRAND.white} barStyle={'light-contents'} />
+
             {/* Search Bar */}
             <View style={styles.SearchContainer}>
-                <SearchIcon width={s(25)} height={s(25)} stroke={BRAND.muted} />
-                <TextInput
-                    placeholder='Search'
-                    style={styles.searchInput}
-                    placeholderTextColor={BRAND.muted}
-                />
+                <SearchIcon width={s(18)} height={s(18)} stroke={BRAND.muted} />
+                <TextInput placeholder='Search' style={styles.searchInput} placeholderTextColor={BRAND.muted} />
             </View>
 
             {/* Main Content */}
@@ -162,11 +169,21 @@ const CategoriesCatlog = () => {
                 {/* Subcategories Sidebar */}
                 <View style={styles.CategoriesContainer}>
                     {isLoading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="small" color={BRAND.primary} />
+                        <View style={styles.skeletonList}>
+                            {renderSubcategorySkeleton()}
                         </View>
                     ) : (
-                        SubcategoriesList
+                        <FlatList
+                            data={currentSubcategories}
+                            keyExtractor={(item, index) => item.id?.toString() || `subcat-${index}`}
+                            renderItem={renderSubcategoryItem}
+                            showsVerticalScrollIndicator={false}
+                            ListEmptyComponent={
+                                <View style={styles.emptyContainer}>
+                                    <Text style={styles.emptyText}>No subcategories found</Text>
+                                </View>
+                            }
+                        />
                     )}
                 </View>
 
@@ -175,10 +192,34 @@ const CategoriesCatlog = () => {
                     <Text style={styles.sectionTitle}>
                         {selectedSubcategory ? getSubcategoryName(selectedSubcategory) : 'All Products'}
                     </Text>
-                    {ProductsList}
+
+                    {productsLoading ? (
+                        <FlatList
+                            contentContainerStyle={styles.productListContent}
+                            data={Array.from({ length: 6 })}
+                            keyExtractor={(_, index) => `skeleton-${index}`}
+                            numColumns={2}
+                            renderItem={() => <ProductSkeleton />}
+                            showsVerticalScrollIndicator={false}
+                        />
+                    ) : (
+                        <FlatList
+                            contentContainerStyle={styles.productListContent}
+                            data={productData}
+                            keyExtractor={(item) => item.id.toString()}
+                            numColumns={2}
+                            renderItem={renderProductItem}
+                            showsVerticalScrollIndicator={false}
+                            ListEmptyComponent={
+                                <View style={styles.emptyContainer}>
+                                    <Text style={styles.emptyText}>No products found</Text>
+                                </View>
+                            }
+                        />
+                    )}
                 </View>
             </View>
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -195,18 +236,18 @@ const styles = StyleSheet.create({
     },
     SearchContainer: {
         width: "90%",
-        height: vs(40),
+        height: vs(33),
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: s(15),
         borderWidth: s(1),
         borderColor: BRAND.border,
         alignSelf: "center",
+        marginTop: s(10),
         borderRadius: s(100),
-        marginTop: vs(10),
     },
     searchInput: {
-        fontSize: ms(16),
+        fontSize: ms(14),
         marginStart: s(10),
         color: BRAND.text,
         flex: 1,
@@ -217,8 +258,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     CategoriesContainer: {
-        width: "25%",
-        borderRightWidth: s(0.5),
+        width: "20%",
+        borderRightWidth: s(0.3),
         borderRightColor: BRAND.muted,
     },
     ProductContainer: {
@@ -227,19 +268,18 @@ const styles = StyleSheet.create({
     },
     itemView: {
         marginBottom: vs(10),
-        // borderRadius:s(12),
         alignItems: "center",
         paddingVertical: vs(8),
     },
     selectedItemView: {
-        backgroundColor: BRAND.primary + '20',
+        backgroundColor: BRAND.white,
         borderRightWidth: 3,
         borderRightColor: BRAND.orange,
     },
     categoryImageView: {
         width: "90%",
-        height: vs(70),
-        backgroundColor: '#FAFAFA',
+        height: vs(60),
+        backgroundColor: '#dce2e6ff',
         borderRadius: s(12),
         justifyContent: 'center',
         alignItems: 'center',
@@ -256,7 +296,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: s(5),
     },
     productListContent: {
-        gap: s(10),
+        gap: s(5),
+        paddingHorizontal: s(5),
         paddingVertical: vs(10),
     },
     card: {
@@ -336,12 +377,91 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     sectionTitle: {
-        fontSize: ms(18),
+        fontSize: ms(16),
         fontWeight: 'bold',
         color: BRAND.text,
-        marginTop: vs(10),
-        marginBottom: vs(5),
+        marginTop: vs(5),
         alignSelf: 'flex-start',
         marginLeft: s(15),
+    },
+    // Skeleton Styles
+    skeletonList: {
+        flex: 1,
+    },
+    skeletonItemView: {
+        marginBottom: vs(10),
+        alignItems: "center",
+        paddingVertical: vs(8),
+    },
+    skeletonCategoryImage: {
+        width: "90%",
+        height: vs(70),
+        backgroundColor: '#F0F0F0',
+        borderRadius: s(12),
+        marginBottom: vs(5),
+    },
+    skeletonCategoryTitle: {
+        width: "80%",
+        height: ms(12),
+        backgroundColor: '#F0F0F0',
+        borderRadius: s(4),
+    },
+    skeletonCard: {
+        width: CARD_WIDTH,
+        height: s(200),
+        paddingTop: s(5),
+        backgroundColor: BRAND.white,
+        justifyContent: 'space-evenly',
+        borderRadius: s(12),
+        marginRight: s(10),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    skeletonProductImage: {
+        height: s(100),
+        alignSelf: "center",
+        width: "90%",
+        backgroundColor: '#F0F0F0',
+        borderRadius: s(8),
+        marginBottom: vs(8),
+    },
+    skeletonProductName: {
+        height: ms(16),
+        backgroundColor: '#F0F0F0',
+        borderRadius: s(4),
+        marginHorizontal: s(8),
+        marginBottom: vs(8),
+    },
+    skeletonProductInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginHorizontal: s(8),
+    },
+    skeletonProductDetails: {
+        flex: 1,
+    },
+    skeletonProductWeight: {
+        height: ms(12),
+        backgroundColor: '#F0F0F0',
+        borderRadius: s(4),
+        marginBottom: vs(4),
+        width: '60%',
+    },
+    skeletonProductPrice: {
+        height: ms(16),
+        backgroundColor: '#F0F0F0',
+        borderRadius: s(4),
+        width: '40%',
+    },
+    skeletonAddButton: {
+        paddingHorizontal: s(18),
+        borderRadius: s(8),
+        paddingVertical: vs(6),
+        backgroundColor: '#F0F0F0',
+        width: s(50),
     },
 });

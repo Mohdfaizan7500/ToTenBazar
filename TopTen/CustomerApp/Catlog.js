@@ -55,8 +55,6 @@ const WaveEffect = () => {
 
 // Skeleton Loader Component with Wave Effect
 const ProductCardSkeleton = () => {
-    const skeletonElements = [1, 2, 3, 4, 5]; // For staggered wave effect
-
     return (
         <View style={styles.skeletonCard}>
             <View style={styles.skeletonImage}>
@@ -83,57 +81,15 @@ const ProductCardSkeleton = () => {
     );
 };
 
-// Alternative: Staggered Wave Effect for more dynamic look
-const StaggeredWaveSkeleton = () => {
-    const animations = useRef(
-        Array(6).fill(0).map(() => new Animated.Value(0))
-    ).current;
-
-    useEffect(() => {
-        const animate = () => {
-            const animationsArray = animations.map((anim, index) =>
-                Animated.sequence([
-                    Animated.delay(index * 150),
-                    Animated.timing(anim, {
-                        toValue: 1,
-                        duration: 800,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(anim, {
-                        toValue: 0,
-                        duration: 800,
-                        useNativeDriver: true,
-                    })
-                ])
-            );
-
-            Animated.stagger(100, animationsArray).start(() => {
-                animations.forEach(anim => anim.setValue(0));
-                animate();
-            });
-        };
-
-        animate();
-    }, []);
-
-    return (
-        <View style={styles.skeletonCard}>
-            <Animated.View style={[styles.skeletonImage, { opacity: animations[0] }]} />
-            <View style={styles.skeletonContent}>
-                <Animated.View style={[styles.skeletonTitle, { opacity: animations[1] }]} />
-                <Animated.View style={[styles.skeletonSubtitle, { opacity: animations[2] }]} />
-                <Animated.View style={[styles.skeletonRating, { opacity: animations[3] }]} />
-                <Animated.View style={[styles.skeletonPrice, { opacity: animations[4] }]} />
-                <Animated.View style={[styles.skeletonButton, { opacity: animations[5] }]} />
-            </View>
-        </View>
-    );
-};
-
 const Catlog = () => {
     const accessToken = useSelector(state => state?.auth?.accessToken)
     const route = useRoute();
     const groupName = route?.params?.title
+    const type = route?.params?.type
+    const bannerId = route?.params?.bannerId
+    console.log('type:', type)
+    console.log('bannerId:', bannerId)
+    
     const dispatch = useDispatch()
     const navigation = useNavigation();
 
@@ -147,82 +103,101 @@ const Catlog = () => {
 
     const ITEMS_PER_PAGE = 10
 
+    // Fetch data based on type (banner or group)
     const fetchData = async (pageNum = 1, isLoadMore = false) => {
-        if (groupName?.length > 0) {
-            try {
+        try {
+            if (isLoadMore) {
+                setLoadingMore(true)
+            } else {
+                if (pageNum === 1) {
+                    setLoading(true)
+                }
+                setError(null)
+            }
+
+            let apiUrl = '';
+            
+            if (type === 'banner') {
+                apiUrl = `${BASE_URL}/prod/banner_product?banner_id=${bannerId}&page=${pageNum}&length=${ITEMS_PER_PAGE}`;
+            } else if (type === 'group') {
+                apiUrl = `${BASE_URL}/prod/get_group/products?group_name=${groupName}&page=${pageNum}&length=${ITEMS_PER_PAGE}`;
+            } else {
+                throw new Error('Invalid type parameter');
+            }
+
+            console.log("API URL:", apiUrl);
+
+            const response = await fetch(apiUrl, {
+                method: "GET",
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            console.log("Response status:", response.status)
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Failed to fetch ${type} products`)
+            }
+
+            const data = await response.json();
+            console.log(`${type} products, page ${pageNum}:`, data);
+
+            let productData = [];
+            let totalRecords = 0;
+
+            if (type === 'banner') {
+                productData = data.data || [];
+                totalRecords = data.recordsTotal || 0;
+            } else if (type === 'group') {
+                productData = data.data || [];
+                totalRecords = data.recordsTotal || 0;
+            }
+
+            if (Array.isArray(productData)) {
                 if (isLoadMore) {
-                    setLoadingMore(true)
+                    setProducts(prevProducts => [...prevProducts, ...productData])
                 } else {
-                    if (pageNum === 1) {
-                        setLoading(true)
-                    }
-                    setError(null)
+                    setProducts(productData)
                 }
 
-                const response = await fetch(
-                    `${BASE_URL}/prod/get_group/products?group_name=${groupName}&page=${pageNum}&length=${ITEMS_PER_PAGE}`,
-                    {
-                        method: "GET",
-                        headers: {
-                            'Authorization': `Bearer ${accessToken}`,
-                            "Content-Type": "application/json",
-                        },
-                    }
-                );
+                const currentCount = isLoadMore ? products.length + productData.length : productData.length
+                setHasMore(currentCount < totalRecords && productData.length === ITEMS_PER_PAGE)
 
-                console.log("response status:", response.status)
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || "Failed to fetch products by group")
+            } else {
+                if (!isLoadMore) {
+                    setProducts([])
                 }
-
-                const data = await response.json();
-                console.log(`Products for group ${groupName}, page ${pageNum}:`, data);
-
-                // Set the products from API response
-                if (data.data && Array.isArray(data.data)) {
-                    if (isLoadMore) {
-                        // Append new products for lazy loading
-                        setProducts(prevProducts => [...prevProducts, ...data.data])
-                    } else {
-                        // Replace products for initial load or refresh
-                        setProducts(data.data)
-                    }
-
-                    // Check if there are more products to load
-                    const totalRecords = data.recordsTotal || 0
-                    const currentCount = isLoadMore ? products.length + data.data.length : data.data.length
-                    setHasMore(currentCount < totalRecords)
-
-                } else {
-                    if (!isLoadMore) {
-                        setProducts([])
-                    }
-                    setHasMore(false)
-                }
-
-                setPage(pageNum + 1)
+                setHasMore(false)
             }
-            catch (e) {
-                console.log('error:', e)
-                setError(e.message)
+
+            setPage(pageNum + 1)
+        }
+        catch (e) {
+            console.log('error:', e)
+            setError(e.message)
+        }
+        finally {
+            if (isLoadMore) {
+                setLoadingMore(false)
+            } else {
+                setLoading(false)
             }
-            finally {
-                if (isLoadMore) {
-                    setLoadingMore(false)
-                } else {
-                    setLoading(false)
-                }
-                setIsRefreshing(false)
-            }
+            setIsRefreshing(false)
         }
     }
 
     // Initial load
     useEffect(() => {
-        fetchData(1, false)
-    }, [groupName])
+        if ((type === 'group' && groupName?.length > 0) || (type === 'banner' && bannerId)) {
+            fetchData(1, false)
+        } else {
+            setLoading(false)
+            setError('Missing required parameters')
+        }
+    }, [groupName, type, bannerId])
 
     // Load more data when reaching end of list
     const loadMoreData = () => {
@@ -256,8 +231,6 @@ const Catlog = () => {
     // Render skeleton loader with wave effect
     const renderSkeletonItem = () => (
         <ProductCardSkeleton />
-        // Or use StaggeredWaveSkeleton for different effect:
-        // <StaggeredWaveSkeleton />
     );
 
     // Render load more footer
@@ -274,13 +247,27 @@ const Catlog = () => {
 
     // Render each product item with API data
     const renderProductItem = ({ item }) => {
-        // Use the first image from product_image array
-        const productImage = item.product_image?.[0]?.image_url;
+        let productImage, productName, productUnit, originalPrice, sellingPrice, discountPercentage;
+
+        if (type === 'banner') {
+            productImage = item.image?.[0]?.image_url || item.product_image?.[0]?.image_url;
+            productName = item.product_name || item.name;
+            productUnit = item.product_unit || item.unit;
+            originalPrice = item.product_original_price || item.original_price;
+            sellingPrice = item.product_selling_price || item.selling_price;
+            discountPercentage = item.discount_percentage;
+        } else {
+            productImage = item.product_image?.[0]?.image_url;
+            productName = item.product_name;
+            productUnit = item.product_unit;
+            originalPrice = item.product_original_price;
+            sellingPrice = item.product_selling_price;
+            discountPercentage = item.discount_percentage;
+        }
 
         return (
             <TouchableOpacity style={styles.productCard} onPress={() => {
-                console.log(item)
-                navigation.navigate('AboutProductScreen',{item})
+                navigation.navigate('AboutProductScreen', { item })
             }}>
                 {/* Product Image */}
                 <View style={styles.imageContainer}>
@@ -292,10 +279,10 @@ const Catlog = () => {
                     />
 
                     {/* Discount Badge */}
-                    {item.discount_percentage && (
+                    {discountPercentage && (
                         <View style={styles.discountBadge}>
                             <Text style={styles.discountText}>
-                                {calculateDiscount(item.product_original_price, item.product_selling_price)}
+                                {calculateDiscount(originalPrice, sellingPrice)}
                             </Text>
                         </View>
                     )}
@@ -304,13 +291,13 @@ const Catlog = () => {
                 {/* Product Details */}
                 <View style={styles.productDetails}>
                     <Text style={styles.productName} numberOfLines={2}>
-                        {item.product_name}
+                        {productName}
                     </Text>
 
                     {/* Product Unit */}
-                    {item.product_unit && (
+                    {productUnit && (
                         <Text style={styles.productUnit} numberOfLines={1}>
-                            {item.product_unit}
+                            {productUnit}
                         </Text>
                     )}
 
@@ -325,11 +312,11 @@ const Catlog = () => {
                     {/* Price */}
                     <View style={styles.priceContainer}>
                         <Text style={styles.currentPrice}>
-                            {formatPrice(item.product_selling_price)}
+                            {formatPrice(sellingPrice)}
                         </Text>
-                        {item.product_original_price && item.product_original_price > item.product_selling_price && (
+                        {originalPrice && originalPrice > sellingPrice && (
                             <Text style={styles.originalPrice}>
-                                {formatPrice(item.product_original_price)}
+                                {formatPrice(originalPrice)}
                             </Text>
                         )}
                     </View>
@@ -385,7 +372,7 @@ const Catlog = () => {
                 <FlatList
                     data={products}
                     renderItem={renderProductItem}
-                    keyExtractor={(item, index) => `${item.id}-${index}`}
+                    keyExtractor={(item, index) => `${item.id || item.product_id}-${index}`}
                     numColumns={2}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.flatListContent}
@@ -409,8 +396,8 @@ const Catlog = () => {
 export default Catlog
 
 const { width } = Dimensions.get('window');
-const CARD_MARGIN = s(8);
-const CARD_WIDTH = (width - (CARD_MARGIN * 4)) / 2;
+const CARD_MARGIN = s(4); // Reduced from s(8)
+const CARD_WIDTH = (width - (CARD_MARGIN * 4)) / 2.3; // Card size reduced to half
 
 const styles = StyleSheet.create({
     container: {
@@ -418,30 +405,31 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5'
     },
     flatListContent: {
-        padding: CARD_MARGIN,
-        paddingBottom: s(20)
+        padding: CARD_MARGIN, // Reduced
+        paddingBottom: s(10) // Reduced from s(20)
     },
     columnWrapper: {
-        justifyContent: 'space-between',
+        justifyContent: 'space-evenly',
     },
     productCard: {
         width: CARD_WIDTH,
+        // paddingHorizontal:s(20),
         backgroundColor: '#fff',
-        borderRadius: s(8),
-        marginBottom: s(10),
+        borderRadius: s(6), // Reduced from s(8)
+        marginBottom: s(6), // Reduced from s(10)
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: s(2),
+            height: s(1), // Reduced from s(2)
         },
-        shadowOpacity: 0.1,
-        shadowRadius: s(3),
-        elevation: 3,
+        shadowOpacity: 0.08, // Reduced from 0.1
+        shadowRadius: s(2), // Reduced from s(3)
+        elevation: 2, // Reduced from 3
         overflow: 'hidden',
     },
     imageContainer: {
         position: 'relative',
-        height: vs(150),
+        height: vs(80), // Reduced from vs(150) - more than half
         backgroundColor: '#f8f8f8',
     },
     productImage: {
@@ -450,92 +438,92 @@ const styles = StyleSheet.create({
     },
     discountBadge: {
         position: 'absolute',
-        top: s(8),
-        left: s(8),
+        top: s(4), // Reduced from s(8)
+        left: s(4), // Reduced from s(8)
         backgroundColor: BRAND.orange,
-        paddingHorizontal: s(6),
-        paddingVertical: s(2),
-        borderRadius: s(4),
+        paddingHorizontal: s(4), // Reduced from s(6)
+        paddingVertical: s(1), // Reduced from s(2)
+        borderRadius: s(3), // Reduced from s(4)
     },
     discountText: {
         color: '#fff',
-        fontSize: s(10),
+        fontSize: s(8), // Reduced from s(10)
         fontWeight: 'bold',
     },
     productDetails: {
-        padding: s(12),
+        padding: s(8), // Reduced from s(12)
     },
     productName: {
-        fontSize: s(14),
+        fontSize: s(10), // Reduced from s(14)
         fontWeight: '500',
         color: '#000',
-        marginBottom: s(4),
-        lineHeight: s(18),
-        height: s(36),
+        marginBottom: s(2), // Reduced from s(4)
+        lineHeight: s(12), // Reduced from s(18)
+        height: s(24), // Reduced from s(36)
     },
     productUnit: {
-        fontSize: s(12),
+        fontSize: s(8), // Reduced from s(12)
         color: BRAND.muted,
-        marginBottom: s(6),
+        marginBottom: s(3), // Reduced from s(6)
     },
     ratingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: s(6),
+        marginBottom: s(3), // Reduced from s(6)
     },
     ratingBox: {
         backgroundColor: '#388e3c',
-        paddingHorizontal: s(6),
-        paddingVertical: s(2),
-        borderRadius: s(4),
-        marginRight: s(6),
+        paddingHorizontal: s(4), // Reduced from s(6)
+        paddingVertical: s(1), // Reduced from s(2)
+        borderRadius: s(3), // Reduced from s(4)
+        marginRight: s(3), // Reduced from s(6)
     },
     ratingText: {
         color: '#fff',
-        fontSize: s(10),
+        fontSize: s(8), // Reduced from s(10)
         fontWeight: 'bold',
     },
     reviewsText: {
-        fontSize: s(10),
+        fontSize: s(8), // Reduced from s(10)
         color: '#757575',
     },
     priceContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: s(6),
+        marginBottom: s(3), // Reduced from s(6)
     },
     currentPrice: {
-        fontSize: s(12),
+        fontSize: s(9), // Reduced from s(12)
         fontWeight: 'bold',
         color: '#000',
-        marginRight: s(6),
+        marginRight: s(3), // Reduced from s(6)
     },
     originalPrice: {
-        fontSize: s(10),
+        fontSize: s(7), // Reduced from s(10)
         color: '#757575',
         textDecorationLine: 'line-through',
     },
     extraInfo: {
-        marginBottom: s(8),
+        marginBottom: s(4), // Reduced from s(8)
     },
     deliveryText: {
-        fontSize: s(10),
+        fontSize: s(7), // Reduced from s(10)
         color: '#388e3c',
-        marginBottom: s(2),
+        marginBottom: s(1), // Reduced from s(2)
     },
     exchangeText: {
-        fontSize: s(10),
+        fontSize: s(7), // Reduced from s(10)
         color: '#ff3f6c',
     },
     addToCartButton: {
         backgroundColor: BRAND.primary,
-        paddingVertical: s(8),
-        borderRadius: s(4),
+        paddingVertical: s(4), // Reduced from s(8)
+        borderRadius: s(3), // Reduced from s(4)
         alignItems: 'center',
     },
     addToCartText: {
         color: '#fff',
-        fontSize: s(12),
+        fontSize: s(8), // Reduced from s(12)
         fontWeight: 'bold',
     },
 
@@ -543,64 +531,64 @@ const styles = StyleSheet.create({
     skeletonCard: {
         width: CARD_WIDTH,
         backgroundColor: '#e0e0e0',
-        borderRadius: s(8),
-        marginBottom: s(10),
+        borderRadius: s(6), // Reduced
+        marginBottom: s(6), // Reduced
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: s(2) },
-        shadowOpacity: 0.1,
-        shadowRadius: s(3),
-        elevation: 3,
+        shadowOffset: { width: 0, height: s(1) }, // Reduced
+        shadowOpacity: 0.08, // Reduced
+        shadowRadius: s(2), // Reduced
+        elevation: 2, // Reduced
         overflow: 'hidden',
     },
     skeletonImage: {
         width: '100%',
-        height: vs(150),
+        height: vs(80), // Reduced
         backgroundColor: '#c8c8c8',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonContent: {
-        padding: s(12),
+        padding: s(8), // Reduced
     },
     skeletonTitle: {
-        height: s(16),
+        height: s(12), // Reduced from s(16)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(4),
-        marginBottom: s(8),
+        borderRadius: s(3), // Reduced
+        marginBottom: s(4), // Reduced from s(8)
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonSubtitle: {
-        height: s(12),
+        height: s(8), // Reduced from s(12)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(4),
-        marginBottom: s(8),
+        borderRadius: s(3), // Reduced
+        marginBottom: s(4), // Reduced from s(8)
         width: '60%',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonRating: {
-        height: s(20),
+        height: s(14), // Reduced from s(20)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(4),
-        marginBottom: s(8),
+        borderRadius: s(3), // Reduced
+        marginBottom: s(4), // Reduced from s(8)
         width: '40%',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonPrice: {
-        height: s(14),
+        height: s(10), // Reduced from s(14)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(4),
-        marginBottom: s(12),
+        borderRadius: s(3), // Reduced
+        marginBottom: s(6), // Reduced from s(12)
         width: '50%',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonButton: {
-        height: s(32),
+        height: s(20), // Reduced from s(32)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(4),
+        borderRadius: s(3), // Reduced
         overflow: 'hidden',
         position: 'relative',
     },
@@ -618,14 +606,14 @@ const styles = StyleSheet.create({
 
     // Lazy Loading Footer
     footerContainer: {
-        padding: s(20),
+        padding: s(10), // Reduced from s(20)
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: s(10),
+        gap: s(5), // Reduced from s(10)
     },
     footerText: {
-        fontSize: s(14),
+        fontSize: s(10), // Reduced from s(14)
         color: BRAND.muted,
     },
 
@@ -633,34 +621,34 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: s(20),
+        padding: s(10), // Reduced from s(20)
     },
     errorText: {
-        fontSize: s(14),
+        fontSize: s(10), // Reduced from s(14)
         color: BRAND.error,
         textAlign: 'center',
-        marginBottom: s(20),
+        marginBottom: s(10), // Reduced from s(20)
     },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: s(20),
+        padding: s(10), // Reduced from s(20)
     },
     emptyText: {
-        fontSize: s(16),
+        fontSize: s(12), // Reduced from s(16)
         color: BRAND.muted,
-        marginBottom: s(20),
+        marginBottom: s(10), // Reduced from s(20)
     },
     retryButton: {
         backgroundColor: BRAND.primary,
-        paddingHorizontal: s(20),
-        paddingVertical: s(10),
-        borderRadius: s(6),
+        paddingHorizontal: s(10), // Reduced from s(20)
+        paddingVertical: s(6), // Reduced from s(10)
+        borderRadius: s(4), // Reduced from s(6)
     },
     retryButtonText: {
         color: BRAND.white,
-        fontSize: s(14),
+        fontSize: s(10), // Reduced from s(14)
         fontWeight: 'bold',
     },
 })
