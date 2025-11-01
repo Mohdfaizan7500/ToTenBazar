@@ -89,7 +89,7 @@ const Catlog = () => {
     const bannerId = route?.params?.bannerId
     console.log('type:', type)
     console.log('bannerId:', bannerId)
-    
+
     const dispatch = useDispatch()
     const navigation = useNavigation();
 
@@ -116,7 +116,7 @@ const Catlog = () => {
             }
 
             let apiUrl = '';
-            
+
             if (type === 'banner') {
                 apiUrl = `${BASE_URL}/prod/banner_product?banner_id=${bannerId}&page=${pageNum}&length=${ITEMS_PER_PAGE}`;
             } else if (type === 'group') {
@@ -218,7 +218,7 @@ const Catlog = () => {
     // Format price to Indian Rupees
     const formatPrice = (price) => {
         if (!price) return '₹0';
-        return `₹${parseInt(price).toLocaleString('en-IN')}`;
+        return `₹${(parseInt(price) / 100).toLocaleString('en-IN')}`;
     }
 
     // Calculate discount percentage
@@ -306,31 +306,24 @@ const Catlog = () => {
                         <View style={styles.ratingBox}>
                             <Text style={styles.ratingText}>4.0 ★</Text>
                         </View>
-                        <Text style={styles.reviewsText}>(1k)</Text>
                     </View>
 
                     {/* Price */}
-                    <View style={styles.priceContainer}>
-                        <Text style={styles.currentPrice}>
-                            {formatPrice(sellingPrice)}
-                        </Text>
-                        {originalPrice && originalPrice > sellingPrice && (
-                            <Text style={styles.originalPrice}>
-                                {formatPrice(originalPrice)}
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <View style={styles.priceContainer}>
+                            <Text style={styles.currentPrice}>
+                                {formatPrice(sellingPrice)}
                             </Text>
-                        )}
+                            {originalPrice && originalPrice > sellingPrice && (
+                                <Text style={styles.originalPrice}>
+                                    {formatPrice(originalPrice)}
+                                </Text>
+                            )}
+                        </View>
+                        <TouchableOpacity style={styles.addToCartButton}>
+                            <Text style={styles.addToCartText}>ADD</Text>
+                        </TouchableOpacity>
                     </View>
-
-                    {/* Delivery & Exchange */}
-                    <View style={styles.extraInfo}>
-                        <Text style={styles.deliveryText}>Free delivery</Text>
-                        <Text style={styles.exchangeText}>Exchange available</Text>
-                    </View>
-
-                    {/* Add to Cart Button */}
-                    <TouchableOpacity style={styles.addToCartButton}>
-                        <Text style={styles.addToCartText}>ADD TO CART</Text>
-                    </TouchableOpacity>
                 </View>
             </TouchableOpacity>
         )
@@ -396,8 +389,8 @@ const Catlog = () => {
 export default Catlog
 
 const { width } = Dimensions.get('window');
-const CARD_MARGIN = s(4); // Reduced from s(8)
-const CARD_WIDTH = (width - (CARD_MARGIN * 4)) / 2.3; // Card size reduced to half
+const CARD_MARGIN = s(9); // Reduced from s(12) by 25%
+const CARD_WIDTH = (width - (CARD_MARGIN * 4)) / 2;
 
 const styles = StyleSheet.create({
     container: {
@@ -405,31 +398,30 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5'
     },
     flatListContent: {
-        padding: CARD_MARGIN, // Reduced
-        paddingBottom: s(10) // Reduced from s(20)
+        padding: CARD_MARGIN,
+        paddingBottom: s(15) // Reduced from s(20)
     },
     columnWrapper: {
-        justifyContent: 'space-evenly',
+        justifyContent: 'space-between',
     },
     productCard: {
         width: CARD_WIDTH,
-        // paddingHorizontal:s(20),
         backgroundColor: '#fff',
-        borderRadius: s(6), // Reduced from s(8)
-        marginBottom: s(6), // Reduced from s(10)
+        borderRadius: s(9), // Reduced from s(12)
+        marginBottom: s(9), // Reduced from s(12)
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: s(1), // Reduced from s(2)
+            height: s(2), // Reduced from s(3)
         },
-        shadowOpacity: 0.08, // Reduced from 0.1
-        shadowRadius: s(2), // Reduced from s(3)
-        elevation: 2, // Reduced from 3
+        shadowOpacity: 0.11, // Reduced from 0.15
+        shadowRadius: s(4.5), // Reduced from s(6)
+        elevation: 3, // Reduced from 4
         overflow: 'hidden',
     },
     imageContainer: {
         position: 'relative',
-        height: vs(80), // Reduced from vs(150) - more than half
+        height: vs(120), // Reduced from vs(160) by 25%
         backgroundColor: '#f8f8f8',
     },
     productImage: {
@@ -438,92 +430,81 @@ const styles = StyleSheet.create({
     },
     discountBadge: {
         position: 'absolute',
-        top: s(4), // Reduced from s(8)
-        left: s(4), // Reduced from s(8)
+        top: s(6), // Reduced from s(8)
+        left: s(6), // Reduced from s(8)
         backgroundColor: BRAND.orange,
-        paddingHorizontal: s(4), // Reduced from s(6)
-        paddingVertical: s(1), // Reduced from s(2)
-        borderRadius: s(3), // Reduced from s(4)
+        paddingHorizontal: s(6), // Reduced from s(8)
+        paddingVertical: s(2), // Reduced from s(3)
+        borderRadius: s(4.5), // Reduced from s(6)
     },
     discountText: {
         color: '#fff',
-        fontSize: s(8), // Reduced from s(10)
+        fontSize: s(9), // Reduced from s(12)
         fontWeight: 'bold',
     },
     productDetails: {
-        padding: s(8), // Reduced from s(12)
+        padding: s(9), // Reduced from s(12)
     },
     productName: {
-        fontSize: s(10), // Reduced from s(14)
-        fontWeight: '500',
+        fontSize: s(12), // Reduced from s(16)
+        fontWeight: '600',
         color: '#000',
-        marginBottom: s(2), // Reduced from s(4)
-        lineHeight: s(12), // Reduced from s(18)
-        height: s(24), // Reduced from s(36)
+        marginBottom: s(4.5), // Reduced from s(6)
+        lineHeight: s(15), // Reduced from s(20)
+        height: s(30), // Reduced from s(40)
     },
     productUnit: {
-        fontSize: s(8), // Reduced from s(12)
+        fontSize: s(9), // Reduced from s(12)
         color: BRAND.muted,
-        marginBottom: s(3), // Reduced from s(6)
+        marginBottom: s(4.5), // Reduced from s(6)
     },
     ratingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: s(3), // Reduced from s(6)
+        marginBottom: s(6), // Reduced from s(8)
     },
     ratingBox: {
         backgroundColor: '#388e3c',
-        paddingHorizontal: s(4), // Reduced from s(6)
-        paddingVertical: s(1), // Reduced from s(2)
-        borderRadius: s(3), // Reduced from s(4)
-        marginRight: s(3), // Reduced from s(6)
+        paddingHorizontal: s(6), // Reduced from s(8)
+        paddingVertical: s(2), // Reduced from s(3)
+        borderRadius: s(4.5), // Reduced from s(6)
+        marginRight: s(4.5), // Reduced from s(6)
     },
     ratingText: {
         color: '#fff',
-        fontSize: s(8), // Reduced from s(10)
+        fontSize: s(9), // Reduced from s(12)
         fontWeight: 'bold',
     },
     reviewsText: {
-        fontSize: s(8), // Reduced from s(10)
+        fontSize: s(9), // Reduced from s(12)
         color: '#757575',
     },
     priceContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: s(3), // Reduced from s(6)
+        marginBottom: s(6), // Reduced from s(8)
     },
     currentPrice: {
-        fontSize: s(9), // Reduced from s(12)
+        fontSize: s(12), // Reduced from s(16)
         fontWeight: 'bold',
         color: '#000',
-        marginRight: s(3), // Reduced from s(6)
+        marginRight: s(4.5), // Reduced from s(6)
     },
     originalPrice: {
-        fontSize: s(7), // Reduced from s(10)
+        fontSize: s(9), // Reduced from s(12)
         color: '#757575',
         textDecorationLine: 'line-through',
     },
-    extraInfo: {
-        marginBottom: s(4), // Reduced from s(8)
-    },
-    deliveryText: {
-        fontSize: s(7), // Reduced from s(10)
-        color: '#388e3c',
-        marginBottom: s(1), // Reduced from s(2)
-    },
-    exchangeText: {
-        fontSize: s(7), // Reduced from s(10)
-        color: '#ff3f6c',
-    },
     addToCartButton: {
         backgroundColor: BRAND.primary,
-        paddingVertical: s(4), // Reduced from s(8)
-        borderRadius: s(3), // Reduced from s(4)
+        paddingHorizontal: s(10), // Reduced from s(8)
+        paddingVertical: s(6), // Reduced from s(6)
+        borderRadius: s(6), // Reduced from s(6)
         alignItems: 'center',
     },
     addToCartText: {
         color: '#fff',
-        fontSize: s(8), // Reduced from s(12)
+        fontSize: s(14), // Reduced from s(12)
         fontWeight: 'bold',
     },
 
@@ -531,64 +512,64 @@ const styles = StyleSheet.create({
     skeletonCard: {
         width: CARD_WIDTH,
         backgroundColor: '#e0e0e0',
-        borderRadius: s(6), // Reduced
-        marginBottom: s(6), // Reduced
+        borderRadius: s(9), // Reduced
+        marginBottom: s(9), // Reduced
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: s(1) }, // Reduced
-        shadowOpacity: 0.08, // Reduced
-        shadowRadius: s(2), // Reduced
-        elevation: 2, // Reduced
+        shadowOffset: { width: 0, height: s(2) }, // Reduced
+        shadowOpacity: 0.11, // Reduced
+        shadowRadius: s(4.5), // Reduced
+        elevation: 3, // Reduced
         overflow: 'hidden',
     },
     skeletonImage: {
         width: '100%',
-        height: vs(80), // Reduced
+        height: vs(120), // Reduced
         backgroundColor: '#c8c8c8',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonContent: {
-        padding: s(8), // Reduced
+        padding: s(9), // Reduced
     },
     skeletonTitle: {
-        height: s(12), // Reduced from s(16)
+        height: s(15), // Reduced from s(20)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(3), // Reduced
-        marginBottom: s(4), // Reduced from s(8)
+        borderRadius: s(4.5), // Reduced
+        marginBottom: s(6), // Reduced from s(8)
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonSubtitle: {
-        height: s(8), // Reduced from s(12)
+        height: s(10.5), // Reduced from s(14)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(3), // Reduced
-        marginBottom: s(4), // Reduced from s(8)
+        borderRadius: s(4.5), // Reduced
+        marginBottom: s(6), // Reduced from s(8)
         width: '60%',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonRating: {
-        height: s(14), // Reduced from s(20)
+        height: s(15), // Reduced from s(20)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(3), // Reduced
-        marginBottom: s(4), // Reduced from s(8)
+        borderRadius: s(4.5), // Reduced
+        marginBottom: s(6), // Reduced from s(8)
         width: '40%',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonPrice: {
-        height: s(10), // Reduced from s(14)
+        height: s(12), // Reduced from s(16)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(3), // Reduced
-        marginBottom: s(6), // Reduced from s(12)
+        borderRadius: s(4.5), // Reduced
+        marginBottom: s(9), // Reduced from s(12)
         width: '50%',
         overflow: 'hidden',
         position: 'relative',
     },
     skeletonButton: {
-        height: s(20), // Reduced from s(32)
+        height: s(24), // Reduced from s(32)
         backgroundColor: '#c8c8c8',
-        borderRadius: s(3), // Reduced
+        borderRadius: s(4.5), // Reduced
         overflow: 'hidden',
         position: 'relative',
     },
@@ -606,14 +587,14 @@ const styles = StyleSheet.create({
 
     // Lazy Loading Footer
     footerContainer: {
-        padding: s(10), // Reduced from s(20)
+        padding: s(15), // Reduced from s(20)
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: s(5), // Reduced from s(10)
+        gap: s(7.5), // Reduced from s(10)
     },
     footerText: {
-        fontSize: s(10), // Reduced from s(14)
+        fontSize: s(10.5), // Reduced from s(14)
         color: BRAND.muted,
     },
 
@@ -621,34 +602,34 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: s(10), // Reduced from s(20)
+        padding: s(15), // Reduced from s(20)
     },
     errorText: {
-        fontSize: s(10), // Reduced from s(14)
+        fontSize: s(12), // Reduced from s(16)
         color: BRAND.error,
         textAlign: 'center',
-        marginBottom: s(10), // Reduced from s(20)
+        marginBottom: s(15), // Reduced from s(20)
     },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: s(10), // Reduced from s(20)
+        padding: s(15), // Reduced from s(20)
     },
     emptyText: {
-        fontSize: s(12), // Reduced from s(16)
+        fontSize: s(13.5), // Reduced from s(18)
         color: BRAND.muted,
-        marginBottom: s(10), // Reduced from s(20)
+        marginBottom: s(15), // Reduced from s(20)
     },
     retryButton: {
         backgroundColor: BRAND.primary,
-        paddingHorizontal: s(10), // Reduced from s(20)
-        paddingVertical: s(6), // Reduced from s(10)
-        borderRadius: s(4), // Reduced from s(6)
+        paddingHorizontal: s(15), // Reduced from s(20)
+        paddingVertical: s(7.5), // Reduced from s(10)
+        borderRadius: s(6), // Reduced from s(8)
     },
     retryButtonText: {
         color: BRAND.white,
-        fontSize: s(10), // Reduced from s(14)
+        fontSize: s(10.5), // Reduced from s(14)
         fontWeight: 'bold',
     },
 })

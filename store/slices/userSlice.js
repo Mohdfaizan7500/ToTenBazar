@@ -104,8 +104,7 @@ export const fetchAllGroups = createAsyncThunk(
 
 export const fetchSubcategories = createAsyncThunk(
     "prod/fetchSubcategories",
-    async ({ category_id, type }, { getState, rejectWithValue }) => {
-        console.log('id:', category_id, 'type:', type)
+    async ( category_id , { getState, rejectWithValue }) => {
 
 
         try {

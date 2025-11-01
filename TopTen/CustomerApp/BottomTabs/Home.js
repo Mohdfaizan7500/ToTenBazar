@@ -104,6 +104,21 @@ const Home = () => {
     }
   ], [])
 
+  // Price formatting function
+  const formatPrice = useCallback((price) => {
+    if (!price) return '₹0';
+    return `₹${(parseInt(price) / 100).toLocaleString('en-IN')}`;
+  }, []);
+
+  // Calculate discount percentage
+  const calculateDiscount = useCallback((originalPrice, sellingPrice) => {
+    if (!originalPrice || !sellingPrice || originalPrice <= sellingPrice || originalPrice === 0) {
+      return 0;
+    }
+    const discount = ((originalPrice - sellingPrice) / originalPrice) * 100;
+    return Math.round(discount);
+  }, []);
+
   // Refresh function
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -123,29 +138,30 @@ const Home = () => {
     }
   }, [dispatch]);
 
-  // Smoother header animation handler
+  // Smoother header animation handler - FIXED VERSION
   const handleHeaderAnimation = useCallback((currentOffset) => {
     const currentScrollY = currentOffset;
     const deltaY = currentScrollY - lastScrollY.current;
 
     if (isAnimating.current) return;
 
-    if (deltaY > 4 && currentScrollY > SCROLL_THRESHOLD) {
+    // Show header when scrolling up, hide when scrolling down
+    if (deltaY > 2 && currentScrollY > SCROLL_THRESHOLD && headerTranslateY._value === 0) {
+      // Scrolling down - hide header
       isAnimating.current = true;
-      Animated.spring(headerTranslateY, {
+      Animated.timing(headerTranslateY, {
         toValue: -HEADER_HEIGHT,
-        tension: 50,
-        friction: 12,
+        duration: 300,
         useNativeDriver: true,
       }).start(() => {
         isAnimating.current = false;
       });
-    } else if (deltaY < -4) {
+    } else if (deltaY < -2 && headerTranslateY._value === -HEADER_HEIGHT) {
+      // Scrolling up - show header
       isAnimating.current = true;
-      Animated.spring(headerTranslateY, {
+      Animated.timing(headerTranslateY, {
         toValue: 0,
-        tension: 50,
-        friction: 12,
+        duration: 300,
         useNativeDriver: true,
       }).start(() => {
         isAnimating.current = false;
@@ -153,7 +169,7 @@ const Home = () => {
     }
 
     lastScrollY.current = currentScrollY;
-  }, [HEADER_HEIGHT]);
+  }, [HEADER_HEIGHT, SCROLL_THRESHOLD]);
 
   // Combined scroll handler for lazy loading and header animation
   const handleMainScroll = Animated.event(
@@ -241,7 +257,6 @@ const Home = () => {
   // Render functions
   const renderBannerItem = useCallback(({ item, index }) => (
     <TouchableOpacity
-
       style={[
         styles.card,
         index === currentIndex && styles.activeCard
@@ -252,12 +267,9 @@ const Home = () => {
           title: item.banner_name, type: 'banner', 
           bannerId: item.id,
           subcategoryId: 13
-
         })
-
       }}
     >
-
       <Image
         source={{ uri: item.banner_img }}
         style={styles.imageSize}
@@ -308,19 +320,31 @@ const Home = () => {
 
   const renderProductItem = useCallback(({ item, index }) => {
     const isApiData = item?.product_image && Array.isArray(item.product_image);
+    
+    // Calculate discount for API data
+    const discountPercentage = isApiData ? 
+      calculateDiscount(item.product_original_price, item.product_selling_price) : 
+      item.mrp ? calculateDiscount(item.mrp * 100, item.price * 100) : 0;
+    
+    const hasDiscount = discountPercentage > 0;
 
     return (
       <TouchableOpacity style={[styles.productCard, { backgroundColor: colors.white }]} onPress={() => {
         console.log(item),
-          navigation.navigate('AboutProductScreen', { item })
+        navigation.navigate('AboutProductScreen', { item })
       }}>
         <View style={[styles.productImageContainer]}>
-          <View style={{ borderRadius: s(6), overflow: "hidden", backgroundColor: BRAND.muted, }}>
+          <View style={{ borderRadius: s(6), overflow: "hidden", backgroundColor: BRAND.muted, position: 'relative' }}>
             <Image
               source={isApiData ? { uri: item?.product_image[0]?.image_url } : item.image}
               style={styles.productImage}
               resizeMode='cover'
             />
+            {hasDiscount && (
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>{discountPercentage}% OFF</Text>
+              </View>
+            )}
           </View>
         </View>
         <View style={styles.productInfo}>
@@ -332,12 +356,16 @@ const Home = () => {
               <Text style={styles.productWeight} numberOfLines={1}>
                 {isApiData ? (item.description || 'Product description') : item.weight}
               </Text>
-              <Text style={styles.productPrice}>
-                ₹{isApiData ? (item.product_selling_price || 'N/A') : item.price}
-                {!isApiData && item.mrp && (
-                  <Text style={styles.productMrp}> ${item.mrp}</Text>
+              <View style={styles.priceContainer}>
+                <Text style={styles.productPrice}>
+                  {isApiData ? formatPrice(item.product_selling_price) : `₹${item.price}`}
+                </Text>
+                {hasDiscount && (
+                  <Text style={styles.productMrp}>
+                    {isApiData ? formatPrice(item.product_original_price) : `₹${item.mrp}`}
+                  </Text>
                 )}
-              </Text>
+              </View>
             </View>
             <TouchableOpacity style={styles.addButton}>
               <Text style={styles.addButtonText}>Add</Text>
@@ -346,7 +374,7 @@ const Home = () => {
         </View>
       </TouchableOpacity>
     );
-  }, [])
+  }, [formatPrice, calculateDiscount])
 
   // Optimized group sections with lazy loading
   const groupSections = useMemo(() => {
@@ -545,7 +573,7 @@ const Home = () => {
             </View>
           </View>
 
-          {/* Search Bar */}
+          {/* Search Bar - Now properly animated with header */}
           <View style={[styles.searchContainer, { backgroundColor: colors.gray[200] }]}>
             <SearchIcon width={s(20)} height={s(20)} stroke={colors.muted} />
             <TextInput
@@ -566,7 +594,7 @@ const Home = () => {
         renderItem={() => MainContent}
         showsVerticalScrollIndicator={false}
         onScroll={handleMainScroll}
-        scrollEventThrottle={8}
+        scrollEventThrottle={16} // Increased for smoother animation
         initialNumToRender={1}
         maxToRenderPerBatch={1}
         windowSize={3}
@@ -722,7 +750,7 @@ const styles = StyleSheet.create({
   },
   activeCard: {
     opacity: 1,
-    backgroundColor: BRAND.pink,
+    backgroundColor: BRAND.border,
     flexDirection: "row"
   },
   flatListCard: {
@@ -869,6 +897,11 @@ const styles = StyleSheet.create({
     fontSize: s(11),
     color: BRAND.muted
   },
+  priceContainer: {
+    // flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(4),
+  },
   productPrice: {
     fontSize: s(12),
     color: BRAND.text,
@@ -923,5 +956,19 @@ const styles = StyleSheet.create({
     fontSize: s(20),
     color: '#fff',
     fontWeight: '800'
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: s(4),
+    left: s(4),
+    backgroundColor: BRAND.orange,
+    paddingHorizontal: s(4),
+    paddingVertical: s(1),
+    borderRadius: s(3),
+  },
+  discountText: {
+    color: '#fff',
+    fontSize: s(8),
+    fontWeight: 'bold',
   }
 })
