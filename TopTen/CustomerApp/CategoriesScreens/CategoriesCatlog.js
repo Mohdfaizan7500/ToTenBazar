@@ -11,7 +11,9 @@ import {
     ActivityIndicator,
     StatusBar,
     Platform,
-    ScrollView
+    ScrollView,
+    Pressable,
+    Animated
 } from 'react-native';
 import BRAND from '../../../src/constant/color';
 import { s, vs, ms, mvs } from 'react-native-size-matters';
@@ -21,6 +23,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { clearSubcategories, clearSubcategoriesProduct, fetchSubcategories, fetchSubcategoryDetails } from '../../../store/slices/userSlice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BASE_URL } from '../../../config';
+import { DARK } from '../../../src/constant/colors';
 
 const CategoriesCatlog = () => {
     const dispatch = useDispatch();
@@ -34,6 +37,11 @@ const CategoriesCatlog = () => {
     const [products, setProducts] = useState([]);
     const [error, setError] = useState(null);
 
+    // Animation states
+    const [currentKeywordIndex, setCurrentKeywordIndex] = useState(0);
+    const slideAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(1)).current;
+
     const route = useRoute();
     const item = route?.params?.item;
     const type = route?.params?.type;
@@ -46,6 +54,18 @@ const CategoriesCatlog = () => {
     const isLargeScreen = width > 414;
     const isTablet = width > 768;
 
+    // Keywords for animation
+    const searchKeywords = useMemo(() => [
+        "Milk",
+        "Bread",
+        "Eggs",
+        "Butter",
+        "Cheese",
+        "Yogurt",
+        "Fruits",
+        "Vegetables"
+    ], []);
+
     const currentCategoryId = item?.id;
     const currentSubcategories = useMemo(() =>
         subcategories[currentCategoryId]?.data || [],
@@ -55,6 +75,54 @@ const CategoriesCatlog = () => {
     const ITEMS_PER_PAGE = isTablet ? 12 : 10;
     const isMountedRef = useRef(true);
     const onEndReachedCalledDuringMomentumRef = useRef(true);
+
+    // Animation functions
+    const startKeywordAnimation = useCallback(() => {
+        const animationDuration = 3000; // 2 seconds per keyword
+        
+        const animate = () => {
+            // Slide out current keyword
+            Animated.parallel([
+                Animated.timing(slideAnim, {
+                    toValue: -30,
+                    duration: 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 100,
+                    useNativeDriver: true,
+                })
+            ]).start(() => {
+                // Change keyword
+                setCurrentKeywordIndex((prevIndex) => 
+                    (prevIndex + 1) % searchKeywords.length
+                );
+                
+                // Reset animation values for new keyword
+                slideAnim.setValue(30); // Start from bottom
+                fadeAnim.setValue(0);
+                
+                // Slide in new keyword
+                Animated.parallel([
+                    Animated.timing(slideAnim, {
+                        toValue: 0,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(fadeAnim, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                    })
+                ]).start();
+            });
+        };
+
+        // Start the animation loop
+        const interval = setInterval(animate, animationDuration);
+        return interval;
+    }, [slideAnim, fadeAnim, searchKeywords.length]);
 
     // Responsive calculations
     const responsive = {
@@ -225,6 +293,17 @@ const CategoriesCatlog = () => {
             }
         }
     }, [currentSubcategories, selectedSubcategory, handleFetchSubcategoriesDetails]);
+
+    // Start animation when component mounts
+    useEffect(() => {
+        const animationInterval = startKeywordAnimation();
+        
+        return () => {
+            if (animationInterval) {
+                clearInterval(animationInterval);
+            }
+        };
+    }, [startKeywordAnimation]);
 
     // Memoized utilities
     const getImageSource = useCallback((subcategory) => {
@@ -447,16 +526,29 @@ const CategoriesCatlog = () => {
         <SafeAreaView style={styles.container}>
             <StatusBar backgroundColor={BRAND.white} barStyle={'light-contents'} />
 
-            {/* Search Bar */}
-            <View style={styles.SearchContainer}>
+            {/* Search Bar with Animated Keywords */}
+            <Pressable style={styles.SearchContainer} onPress={()=>navigation.navigate('SearchScreen')}>
                 <SearchIcon width={s(18)} height={s(18)} stroke={BRAND.muted} />
-                <TextInput
-                    placeholder='Search'
-                    style={[styles.searchInput, { fontSize: responsive.fontSize.medium }]}
-                    placeholderTextColor={BRAND.muted}
-                />
-            </View>
+                <View style={styles.placeholderContainer}>
+                    <Text style={styles.searchStaticText}>Search for </Text>
+                    <View style={styles.animatedKeywordContainer}>
+                        <Animated.Text 
+                            style={[
+                                styles.animatedKeyword,
+                                { 
+                                    fontSize: s(13),
+                                    transform: [{ translateY: slideAnim }],
+                                    opacity: fadeAnim
+                                }
+                            ]}
+                        >
+                            " {searchKeywords[currentKeywordIndex]} "
+                        </Animated.Text>
+                    </View>
+                </View>
+            </Pressable>
 
+            {/* Rest of your component remains the same */}
             {/* Main Content */}
             <View style={styles.ListContainer}>
                 {/* Subcategories Sidebar */}
@@ -535,7 +627,7 @@ const CategoriesCatlog = () => {
 
 export default CategoriesCatlog;
 
-// Responsive styles
+// Updated styles with animation styles
 const { width, height } = Dimensions.get('window');
 const isTablet = width > 768;
 
@@ -545,8 +637,8 @@ const styles = StyleSheet.create({
         backgroundColor: BRAND.white,
     },
     SearchContainer: {
-        width: "90%",
-        height: isTablet ? vs(40) : vs(33),
+        width: "93%",
+        height: isTablet ? vs(40) : vs(35),
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: isTablet ? s(20) : s(15),
@@ -554,18 +646,28 @@ const styles = StyleSheet.create({
         borderColor: BRAND.border,
         alignSelf: "center",
         marginTop: isTablet ? s(15) : s(10),
-        borderRadius: s(100),
+        borderRadius: s(5),
     },
-    searchInput: {
-        marginStart: isTablet ? s(15) : s(10),
-        color: BRAND.text,
-        flex: 1,
-        ...Platform.select({
-            ios: {
-                lineHeight: isTablet ? ms(20) : ms(16),
-            },
-        }),
+    placeholderContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginStart: s(15),
     },
+    searchStaticText: {
+        fontSize: s(13),
+        color: DARK.gray[400],
+    },
+    animatedKeywordContainer: {
+        height: s(20),
+        overflow: 'hidden',
+        marginLeft: s(5),
+        // backgroundColor:"red"
+    },
+    animatedKeyword: {
+        color: DARK.gray[400],
+        // fontWeight: '600',
+    },
+    // ... rest of your existing styles remain the same
     ListContainer: {
         flexDirection: "row",
         marginTop: isTablet ? vs(15) : vs(10),

@@ -1,5 +1,5 @@
 import * as React from "react";
-import Svg, { Path, G, Defs, ClipPath, Rect, Pattern, Use, Image, Circle, Ellipse } from "react-native-svg";
+import Svg, { Path, G, Defs, ClipPath, Rect, Pattern, Use, Image, Circle, Ellipse ,Line} from "react-native-svg";
 
 export const ClockIcon = (props) => (
     <Svg
@@ -1211,6 +1211,54 @@ export const MoonIcon = (props) => (
         <Path
             d="M9.272 2.406a1 1 0 0 0-1.23-1.355C6.59 1.535 5.432 2.487 4.37 3.55a11.399 11.399 0 0 0 0 16.182c4.518 4.519 11.51 4.261 15.976-.205 1.062-1.062 2.014-2.22 2.498-3.673A1 1 0 0 0 21.55 14.6c-3.59 1.322-7.675.734-10.434-2.025-2.765-2.766-3.328-6.83-1.844-10.168Z"
             fill="#000000"
+            {...props}
+
+        />
+    </Svg>
+);
+
+export const CrossIcon2 = (props) => (
+    <Svg
+        fill="#000000"
+        width="800px"
+        height="800px"
+        viewBox="0 0 24 24"
+        id="cross"
+        data-name="Line Color"
+        xmlns="http://www.w3.org/2000/svg"
+        className="icon line-color"
+        {...props}
+    >
+        <Line
+            id="primary"
+            x1={19}
+            y1={19}
+            x2={5}
+            y2={5}
+            style={{
+                fill: "none",
+                stroke: "rgb(0, 0, 0)",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                strokeWidth: 2,
+            }}
+            {...props}
+
+        />
+        <Line
+            id="primary-2"
+            data-name="primary"
+            x1={19}
+            y1={5}
+            x2={5}
+            y2={19}
+            style={{
+                fill: "none",
+                stroke: "rgb(0, 0, 0)",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                strokeWidth: 2,
+            }}
             {...props}
 
         />

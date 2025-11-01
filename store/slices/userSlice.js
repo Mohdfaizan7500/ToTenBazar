@@ -104,7 +104,7 @@ export const fetchAllGroups = createAsyncThunk(
 
 export const fetchSubcategories = createAsyncThunk(
     "prod/fetchSubcategories",
-    async ( category_id , { getState, rejectWithValue }) => {
+    async (category_id, { getState, rejectWithValue }) => {
 
 
         try {
@@ -437,7 +437,7 @@ const userSlice = createSlice({
                 }
 
                 // Store each subcategory data under its own ID
-                state.subcategoriesProduct= data;
+                state.subcategoriesProduct = data;
             })
             .addCase(fetchSubcategoryDetails.rejected, (state, action) => {
                 state.isLoadingsubcategoriesProduct = false;

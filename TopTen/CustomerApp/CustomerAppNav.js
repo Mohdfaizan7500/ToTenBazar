@@ -18,6 +18,7 @@ import OrderSummery from '../CustomerApp/ProfileScreens/OrderSummery';
 import OrderDetails from '../CustomerApp/ProfileScreens/OrderDetails';
 import OrderConfirem from '../CustomerApp/ProfileScreens/OrderConfirem';
 import Offers from '../CustomerApp/ProfileScreens/Offers';
+import SearchScreen from '../CustomerApp/SearchScreen';
 import Catlog from '../CustomerApp/Catlog';
 import { useSelector } from 'react-redux';
 import { DARK,BRAND } from '../../src/constant/colors';
@@ -127,6 +128,7 @@ const CustomerAppNav = () => {
                     const title = route?.params?.title || 'Catlog'
                     return getProfileHeaderOptions(title, navigation)
                 }} />
+                <Stack.Screen name='SearchScreen' component={SearchScreen} options={{headerShown:false}}/>
 
         </Stack.Navigator>
     )
