@@ -1,4 +1,4 @@
-import { ActivityIndicator, Animated, Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, RefreshControl } from 'react-native'
+import { ActivityIndicator, Animated, Dimensions, FlatList, Image, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, RefreshControl, Pressable } from 'react-native'
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { DARK, BRAND } from '../../../src/constant/colors'
 import { BagIcon, BellIcon, DownArrowIcon, FavoriteIcon, LocationIcon, SearchIcon } from '../../../src/SVGicons/icon'
@@ -23,6 +23,11 @@ const Home = () => {
   const dispatch = useDispatch()
   const colors = Theme ? DARK : BRAND;
 
+  // Search text animation states
+  const [currentKeywordIndex, setCurrentKeywordIndex] = useState(0);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
   // Header animation values
   const scrollY = useRef(new Animated.Value(0)).current
   const headerTranslateY = useRef(new Animated.Value(0)).current
@@ -36,6 +41,20 @@ const Home = () => {
   // Header animation constants
   const HEADER_HEIGHT = vs(140)
   const SCROLL_THRESHOLD = 25
+
+  // Search keywords for animation
+  const searchKeywords = [
+    "Search for \"Milk\"  ",
+    "Search for \"Bread\"",
+    "Search for \"Eggs\"",
+    "Search for \"Butter\" ",
+    "Search for \"Cheese\"",
+    "Search for \"Yogurt\"",
+    "Search for \"Fruits\"",
+    "Search for \"Vegetables\"",
+    "Search for \"Rice\"",
+    "Search for \"Sugar\""
+  ];
 
   // Redux selectors
   const Banner_Config = useSelector(state => state.user.Baner_Config)
@@ -118,6 +137,64 @@ const Home = () => {
     const discount = ((originalPrice - sellingPrice) / originalPrice) * 100;
     return Math.round(discount);
   }, []);
+
+  // Search text animation function
+  const startKeywordAnimation = useCallback(() => {
+    const animationDuration = 2000; // 2 seconds per keyword
+
+    const animate = () => {
+      // Slide out current keyword and fade out
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: -20,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
+        // Change to next keyword
+        setCurrentKeywordIndex((prevIndex) =>
+          (prevIndex + 1) % searchKeywords.length
+        );
+
+        // Reset animation values for new keyword (start from bottom)
+        slideAnim.setValue(20);
+        fadeAnim.setValue(0);
+
+        // Slide in new keyword and fade in
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          })
+        ]).start();
+      });
+    };
+
+    // Start the animation loop
+    const interval = setInterval(animate, animationDuration);
+    return interval;
+  }, [searchKeywords.length]);
+
+  // Start search text animation when component mounts
+  useEffect(() => {
+    const animationInterval = startKeywordAnimation();
+    return () => {
+      if (animationInterval) {
+        clearInterval(animationInterval);
+      }
+    };
+  }, [startKeywordAnimation]);
 
   // Refresh function
   const onRefresh = useCallback(async () => {
@@ -264,7 +341,7 @@ const Home = () => {
       onPress={() => {
         console.log(item)
         navigation.navigate('Catlog', {
-          title: item.banner_name, type: 'banner', 
+          title: item.banner_name, type: 'banner',
           bannerId: item.id,
           subcategoryId: 13
         })
@@ -320,18 +397,18 @@ const Home = () => {
 
   const renderProductItem = useCallback(({ item, index }) => {
     const isApiData = item?.product_image && Array.isArray(item.product_image);
-    
+
     // Calculate discount for API data
-    const discountPercentage = isApiData ? 
-      calculateDiscount(item.product_original_price, item.product_selling_price) : 
+    const discountPercentage = isApiData ?
+      calculateDiscount(item.product_original_price, item.product_selling_price) :
       item.mrp ? calculateDiscount(item.mrp * 100, item.price * 100) : 0;
-    
+
     const hasDiscount = discountPercentage > 0;
 
     return (
       <TouchableOpacity style={[styles.productCard, { backgroundColor: colors.white }]} onPress={() => {
         console.log(item),
-        navigation.navigate('AboutProductScreen', { item })
+          navigation.navigate('AboutProductScreen', { item })
       }}>
         <View style={[styles.productImageContainer]}>
           <View style={{ borderRadius: s(6), overflow: "hidden", backgroundColor: BRAND.muted, position: 'relative' }}>
@@ -574,14 +651,28 @@ const Home = () => {
           </View>
 
           {/* Search Bar - Now properly animated with header */}
-          <View style={[styles.searchContainer, { backgroundColor: colors.gray[200] }]}>
+          <Pressable style={[styles.searchContainer, { backgroundColor: colors.gray[100] }]} onPress={() => {
+            navigation.navigate('SearchScreen')
+          }}>
             <SearchIcon width={s(20)} height={s(20)} stroke={colors.muted} />
-            <TextInput
-              placeholder='Search'
-              placeholderTextColor={colors.muted}
-              style={styles.searchinput}
-            />
-          </View>
+            <View style={styles.searchTextContainer}>
+              {/* <Text style={styles.searchStaticText}>Search for </Text> */}
+              <View style={styles.animatedKeywordContainer}>
+                <Animated.Text
+                  style={[
+                    styles.animatedKeyword,
+                    {
+                      color: colors.muted,
+                      transform: [{ translateY: slideAnim }],
+                      opacity: fadeAnim
+                    }
+                  ]}
+                >
+                  {searchKeywords[currentKeywordIndex]}
+                </Animated.Text>
+              </View>
+            </View>
+          </Pressable>
         </View>
       </Animated.View>
 
@@ -701,9 +792,9 @@ const styles = StyleSheet.create({
     width: "90%",
     backgroundColor: BRAND.bg,
     height: vs(36),
-    borderRadius: s(4),
-    borderWidth:s(1),
-    borderColor:BRAND.border,
+    borderRadius: s(5),
+    borderWidth: s(1),
+    borderColor: BRAND.border,
     alignSelf: "center",
     marginTop: vs(8),
     marginBottom: vs(8),
@@ -711,16 +802,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: s(16),
     gap: s(8),
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 1 },
-    // shadowOpacity: 0.08,
-    // shadowRadius: 6,
-    // elevation: 4,
   },
-  searchinput: {
+  searchTextContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchStaticText: {
     fontSize: s(14),
-    color: BRAND.text,
+    color: BRAND.muted,
+  },
+  animatedKeywordContainer: {
+    height: s(40),
+    paddingHorizontal:s(10),
+    overflow: 'hidden',
+    // backgroundColor:"red",
+    justifyContent: 'center',
+    marginLeft: s(4),
+  },
+  animatedKeyword: {
+    fontSize: s(14),
+    color: BRAND.muted,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   homeText: {
     color: BRAND.white,
@@ -972,5 +1076,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: s(8),
     fontWeight: 'bold',
-  }
+  },
 })
