@@ -396,19 +396,37 @@ const SearchScreen = () => {
     const showResults = !isTyping && !loader && searchText.trim() !== '';
 
     const renderProductCard = () => {
-        return (
-            <View style={{
-                width: Dimensions.get('window').width / 2 - s(20),
-                height: vs(200),
-                borderRadius: s(12),
-                marginBottom: s(10),
-                backgroundColor: colors.gray[300],
-                marginHorizontal: s(8)
-            }}>
+    return (
+        <View style={styles.productCardContainer}>
+            {/* Product Image */}
+            <View style={styles.productImageContainer}>
+                <Image 
+                    source={require('../../src/images/default.jpg')}
+                    style={styles.productImage}
+                    resizeMode='cover'
+                />
             </View>
-        )
-    }
 
+            {/* Product Name */}
+            <Text style={styles.productName} numberOfLines={2}>
+                Product Name Here
+            </Text>
+
+            {/* Price Section */}
+            <View style={styles.priceContainer}>
+                <Text style={styles.currentPrice}>₹1000</Text>
+                <Text style={styles.originalPrice}>₹1100</Text>
+            </View>
+
+            {/* Add Button */}
+            <View style={styles.addButtonContainer}>
+                <TouchableOpacity style={styles.addButton}>
+                    <Text style={styles.addButtonText}>Add</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    )
+}
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
             <StatusBar backgroundColor={colors.bg} />
@@ -556,12 +574,14 @@ const SearchScreen = () => {
                 ) : (
                     <View style={{ flex: 1, backgroundColor: BRAND.bg }}>
                         <FlatList
-                            data={[1, 1, 1, 1, 1, 1,3,3,3,7]}
+                            data={[1, 1, 1, 1, 1, 1, 3, 3, 3, 7]}
                             style={{ flex: 1 }}
-                            contentContainerStyle={{gap: s(10),
+                            contentContainerStyle={{
+                                gap: s(10),
                                 alignItems: 'center',
                                 paddingTop: s(20),
-                                paddingHorizontal: s(20) }}
+                                paddingHorizontal: s(20)
+                            }}
                             keyExtractor={(item, index) => index.toString()}
                             numColumns={2}
                             renderItem={renderProductCard}
@@ -747,5 +767,76 @@ const styles = StyleSheet.create({
     loadingMoreText: {
         fontSize: s(12),
         color: BRAND.gray[400],
-    }
+    },
+    productCardContainer: {
+        width: Dimensions.get('window').width / 2 - s(25),
+        height: vs(200),
+        borderRadius: s(12),
+        marginBottom: s(10),
+        backgroundColor: BRAND.white,
+        marginHorizontal: s(5),
+        padding: s(10),
+        borderWidth: s(1),
+        borderColor: BRAND.gray[200]
+    },
+    productImagePlaceholder: {
+        width: "100%",
+        height: "50%",
+        backgroundColor: BRAND.gray[300],
+        borderRadius: s(8),
+        marginBottom: s(8)
+    },
+    productName: {
+        fontSize: s(12),
+        fontWeight: '500',
+        color: BRAND.text,
+        marginBottom: s(4)
+    },
+    priceContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: s(6),
+        marginBottom: s(8)
+    },
+    currentPrice: {
+        fontSize: s(14),
+        fontWeight: '600',
+        color: BRAND.text
+    },
+    originalPrice: {
+        fontSize: s(12),
+        color: BRAND.gray[400],
+        textDecorationLine: 'line-through'
+    },
+    addButtonContainer: {
+        alignItems: 'flex-end',
+        width: "100%"
+    },
+    addButton: {
+        backgroundColor: BRAND.primary,
+        width: s(60),
+        justifyContent: "center",
+        alignItems: "center",
+        paddingVertical: s(6),
+        borderRadius: s(8)
+    },
+    addButtonText: {
+        color: BRAND.white,
+        fontSize: s(12),
+        fontWeight: '500'
+    },
+    productImageContainer: {
+        width: "100%",
+        height: "50%",
+        backgroundColor: BRAND.gray[100],
+        borderRadius: s(8),
+        marginBottom: s(8),
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden'
+    },
+    productImage: {
+        width: "100%",
+        height: "100%"
+    },
 })
