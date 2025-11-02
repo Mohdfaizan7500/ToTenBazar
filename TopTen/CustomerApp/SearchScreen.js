@@ -1,4 +1,4 @@
-import { StatusBar, StyleSheet, TextInput, TouchableOpacity, View, Animated, Text, FlatList, Image } from 'react-native'
+import { StatusBar, StyleSheet, TextInput, TouchableOpacity, View, Animated, Text, FlatList, Image, Dimensions } from 'react-native'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import colors, { BRAND, DARK } from '../../src/constant/colors'
@@ -47,21 +47,14 @@ const SearchScreen = () => {
         "Sugar"
     ];
 
-    // API call function - FIXED: Added required parameters
+    // API call function - UPDATED: Handle the specific response structure
     const fetchBannerProducts = useCallback(async (searchTerm, page = 1, length = 10) => {
         try {
             setLoader(true);
             setIsTyping(false); // Hide typing state when API call starts
-            
-            // Build query parameters - FIXED: Include required subcategory_id
-            let queryParams = `page=${page}&length=${length}&subcategory_id=13`;
-            
-            if (searchTerm && searchTerm.trim() !== '') {
-                queryParams += `&prod_name=${encodeURIComponent(searchTerm.trim())}`;
-            }
 
-            const url = `${BASE_URL}/prod/banner_product?${queryParams}`;
-            
+            const url = `${BASE_URL}/prod/product_suggetion?prod_name=${encodeURIComponent(searchTerm.trim())}`;
+
             console.log('🔍 Fetching banner products from:', url);
 
             const response = await fetch(url, {
@@ -77,7 +70,7 @@ const SearchScreen = () => {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.log('❌ API Error Response:', errorText);
-                
+
                 // Handle specific error cases
                 if (response.status === 400) {
                     throw new Error('Invalid request parameters. Please try again.');
@@ -93,46 +86,50 @@ const SearchScreen = () => {
             const data = await response.json();
             console.log('✅ Banner products API response:', data);
 
-            // Handle different response structures
+            // UPDATED: Handle the specific response structure from your example
             let products = [];
+
+            // Check for the exact structure from your response
             if (data.data && Array.isArray(data.data)) {
                 products = data.data;
-            } else if (Array.isArray(data)) {
-                products = data;
-            } else if (data.products && Array.isArray(data.products)) {
-                products = data.products;
-            } else if (data.results && Array.isArray(data.results)) {
-                products = data.results;
+                console.log(`🎯 Found ${products.length} products in data array`);
+
+                // Log each product to understand the structure
+                products.forEach((product, index) => {
+                    console.log(`📦 Product ${index + 1}:`, {
+                        name: product.name,
+                        image: product.image,
+                        id: product.id,
+                        fullProduct: product
+                    });
+                });
+            } else {
+                console.log('⚠️ Unexpected response structure:', data);
             }
 
-            console.log(`🎯 Found ${products.length} products`);
-
+            // UPDATED: Set search results based on the response
             if (page === 1) {
                 setSearchResults(products);
             } else {
                 setSearchResults(prev => [...prev, ...products]);
             }
 
-            // Check if there are more pages
-            setHasMore(products.length === length);
+            // Check if there are more pages (for this API, it seems like single page results)
+            setHasMore(false); // Since this is a suggestion API, likely no pagination
             setCurrentPage(page);
 
             return products;
         } catch (error) {
             console.log('❌ Error fetching banner products:', error);
-            
-            // Show error message to user
-            if (error.message.includes('banner_id or subcategory_id')) {
-                console.log('⚠️ API requires banner_id or subcategory_id parameter');
-            }
-            
             throw error;
         } finally {
             setLoader(false);
         }
     }, [accessToken]);
 
-    // Debounced search function
+    // product skeleton loader 
+
+    // Debounced search function - UPDATED: 5 second delay
     const debouncedSearch = useCallback((searchTerm, page = 1) => {
         // Clear existing timeout
         if (debounceTimeoutRef.current) {
@@ -144,13 +141,12 @@ const SearchScreen = () => {
             setIsTyping(true);
         }
 
-        // Set new timeout
+        // Set new timeout with 5 second delay
         debounceTimeoutRef.current = setTimeout(() => {
             if (searchTerm.trim() !== '') {
                 console.log('🔍 Searching for:', searchTerm, 'page:', page);
                 fetchBannerProducts(searchTerm, page).catch(error => {
                     console.log('❌ Search failed:', error.message);
-                    // You can show an error message to the user here
                 });
             } else {
                 // Clear results if search is empty
@@ -159,13 +155,13 @@ const SearchScreen = () => {
                 setCurrentPage(1);
                 setIsTyping(false);
             }
-        }, 800); // 800ms delay after typing stops
+        }, 5000); // UPDATED: 5000ms (5 seconds) delay after typing stops
     }, [fetchBannerProducts]);
 
     // Handle text input change
     const handleTextChange = (text) => {
         setSearchText(text);
-        
+
         if (text.trim() === '') {
             // Clear immediately if text is empty
             if (debounceTimeoutRef.current) {
@@ -176,7 +172,7 @@ const SearchScreen = () => {
             setCurrentPage(1);
             setIsTyping(false);
         } else {
-            // Trigger debounced search
+            // Trigger debounced search with 5 second delay
             debouncedSearch(text, 1);
         }
     };
@@ -344,27 +340,34 @@ const SearchScreen = () => {
     const handleShowAllResults = () => {
         // Navigate to search results screen or show all results
         console.log('Show all results for:', searchText);
-        navigation.navigate('SearchResultsScreen', { 
+        navigation.navigate('SearchResultsScreen', {
             searchQuery: searchText,
-            products: searchResults 
+            products: searchResults
         });
     };
 
-    // Render search result item
+    // UPDATED: Render search result item based on the actual response structure
     const renderSearchItem = ({ item, index }) => {
-        // Safe access to item properties
-        const productImage = item?.image?.[0]?.image_url || item?.product_image?.[0]?.image_url || item?.image_url;
-        const productName = item?.product_name || item?.name || 'Product Name';
-        const productId = item?.id || item?.product_id || index;
-        const productPrice = item?.product_selling_price || item?.selling_price || item?.price;
-        const originalPrice = item?.product_original_price || item?.original_price;
+        // Safe access to item properties based on your response structure
+        const productImage = item?.image; // Direct image string from response
+        const productName = item?.name || 'Product Name'; // Direct name from response
+        const productId = item?.id || index;
+
+        console.log(`🖼️ Rendering product ${index}:`, {
+            name: productName,
+            image: productImage,
+            fullItem: item
+        });
 
         return (
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={[styles.productItemContainer]}
                 onPress={() => {
                     // Navigate to product details
-                    navigation.navigate('AboutProductScreen', { item });
+                    // navigation.navigate('AboutProductScreen', { item });
+                    console.log('select:', productName)
+                    setSearchText(productName)
+                    fetchBannerProducts(productName)
                 }}
             >
                 <View style={styles.imageBox}>
@@ -372,22 +375,17 @@ const SearchScreen = () => {
                         source={productImage ? { uri: productImage } : require('../../src/images/default.jpg')}
                         style={{ width: "100%", height: "100%" }}
                         resizeMode='cover'
+                        onError={(error) => console.log('❌ Image load error:', error.nativeEvent.error)}
                     />
                 </View>
                 <View style={[styles.productInfoContainer]}>
                     <Text style={styles.productname} numberOfLines={2}>
                         {productName}
                     </Text>
-                    {productPrice && (
-                        <Text style={styles.productPrice}>
-                            ₹{(parseInt(productPrice) / 100).toLocaleString('en-IN')}
-                        </Text>
-                    )}
-                    {originalPrice && originalPrice > productPrice && (
-                        <Text style={styles.originalPrice}>
-                            ₹{(parseInt(originalPrice) / 100).toLocaleString('en-IN')}
-                        </Text>
-                    )}
+                    {/* Price information might not be available in suggestions API */}
+                    {/* <Text style={styles.productPrice}>
+                        View Detail
+                    </Text> */}
                 </View>
             </TouchableOpacity>
         );
@@ -396,6 +394,20 @@ const SearchScreen = () => {
     const hasSearchResults = searchResults.length > 0;
     const showSkeletonLoader = (isTyping || loader) && searchResults.length === 0;
     const showResults = !isTyping && !loader && searchText.trim() !== '';
+
+    const renderProductCard = () => {
+        return (
+            <View style={{
+                width: Dimensions.get('window').width / 2 - s(20),
+                height: vs(200),
+                borderRadius: s(12),
+                marginBottom: s(10),
+                backgroundColor: colors.gray[300],
+                marginHorizontal: s(8)
+            }}>
+            </View>
+        )
+    }
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -455,65 +467,107 @@ const SearchScreen = () => {
                 )}
             </View>
 
-            {/* Show skeleton loader during typing OR API loading */}
-            {showSkeletonLoader ? (
-                <FlatList
-                    data={[1, 2, 3, 4, 5, 6, 7, 8]}
-                    keyExtractor={(item, index) => `skeleton-${index}`}
-                    renderItem={() => <Loader />}
-                    showsVerticalScrollIndicator={false}
-                />
-            ) : (
-                <View style={{ backgroundColor: colors.bg, flex: 1 }}>
+            {false ? (
+                /* Show skeleton loader during typing OR API loading */
+                showSkeletonLoader ? (
                     <FlatList
-                        data={searchResults}
-                        keyExtractor={(item, index) => {
-                            const id = item?.id || item?.product_id || index;
-                            return `search-result-${id}`;
-                        }}
-                        renderItem={renderSearchItem}
-                        onEndReached={loadMoreProducts}
-                        onEndReachedThreshold={0.5}
-                        ListFooterComponent={() => (
-                            <>
-                                {loader && searchResults.length > 0 && (
-                                    <View style={styles.loadingMoreContainer}>
-                                        <Text style={styles.loadingMoreText}>Loading more products...</Text>
-                                    </View>
-                                )}
-                                {hasSearchResults && showResults && (
-                                    <TouchableOpacity 
-                                        style={[styles.showAllContainer]} 
-                                        onPress={handleShowAllResults}
-                                    >
-                                        <View style={[styles.iconBox, { 
-                                            backgroundColor: colors.primary + '10' 
-                                        }]}>
-                                            <SearchIcon width={s(20)} height={s(20)} stroke={colors.primary} />
-                                        </View>
-                                        <View style={[styles.showAllTextContainer]}>
-                                            <Text style={{ color: colors.gray[400] }}>Show all results for </Text>
-                                            <Text style={styles.searchQueryText}>{searchText}</Text>
-                                        </View>
-                                        <RightArrowICon width={s(15)} height={s(15)} stroke={colors.gray[400]} />
-                                    </TouchableOpacity>
-                                )}
-                                {!hasSearchResults && showResults && (
-                                    <View style={styles.noResultsContainer}>
-                                        <Text style={styles.noResultsText}>No results found for "{searchText}"</Text>
-                                    </View>
-                                )}
-                            </>
-                        )}
-                        ListEmptyComponent={() => 
-                            showResults && !hasSearchResults ? (
-                                <View style={styles.noResultsContainer}>
-                                    <Text style={styles.noResultsText}>No results found for "{searchText}"</Text>
-                                </View>
-                            ) : null
-                        }
+                        data={[1, 2, 3, 4, 5, 6, 7, 8]}
+                        keyExtractor={(item, index) => `skeleton-${index}`}
+                        renderItem={() => <Loader />}
+                        showsVerticalScrollIndicator={false}
                     />
-                </View>
+                ) : (
+                    <View style={{ backgroundColor: colors.bg, flex: 1 }}>
+                        <FlatList
+                            data={searchResults}
+                            keyExtractor={(item, index) => {
+                                const id = item?.id || index;
+                                return `search-result-${id}`;
+                            }}
+                            renderItem={renderSearchItem}
+                            onEndReached={loadMoreProducts}
+                            onEndReachedThreshold={0.5}
+                            ListFooterComponent={() => (
+                                <>
+                                    {loader && searchResults.length > 0 && (
+                                        <View style={styles.loadingMoreContainer}>
+                                            <Text style={styles.loadingMoreText}>Loading more products...</Text>
+                                        </View>
+                                    )}
+                                    {searchText.length > 0 && (
+                                        <TouchableOpacity
+                                            style={[styles.showAllContainer]}
+                                            onPress={handleShowAllResults}
+                                        >
+                                            <View style={[styles.iconBox, {
+                                                backgroundColor: colors.primary + '10'
+                                            }]}>
+                                                <SearchIcon width={s(20)} height={s(20)} stroke={colors.primary} />
+                                            </View>
+                                            <View style={[styles.showAllTextContainer]}>
+                                                <Text style={{ color: colors.gray[400] }}>Show all results for </Text>
+                                                <Text style={styles.searchQueryText}>{searchText}</Text>
+                                            </View>
+                                            <RightArrowICon width={s(15)} height={s(15)} stroke={colors.gray[400]} />
+                                        </TouchableOpacity>
+                                    )}
+                                </>
+                            )}
+                        />
+                    </View>
+                )
+            ) : (
+                false ? (
+                    <View style={{ flex: 1, backgroundColor: BRAND.bg }}>
+                        <FlatList
+                            contentContainerStyle={{
+                                gap: s(10),
+                                alignItems: 'center',
+                                paddingTop: s(20),
+                                paddingHorizontal: s(20)
+                            }}
+                            data={[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+                            keyExtractor={(item, index) => index.toString()}
+                            numColumns={2}
+                            ListHeaderComponent={
+                                <View style={{
+                                    width: '100%',
+                                    height: vs(50),
+                                    backgroundColor: BRAND.gray[300],
+                                    marginBottom: s(10),
+                                    borderRadius: s(8)
+                                }}>
+                                    <View style={{ width: Dimensions.get('window').width - s(20), height: vs(50) }} />
+                                </View>
+                            }
+                            renderItem={() => (
+                                <View style={{
+                                    width: Dimensions.get('window').width / 2 - s(20),
+                                    height: vs(150),
+                                    borderRadius: s(12),
+                                    marginBottom: s(10),
+                                    backgroundColor: colors.gray[300],
+                                    marginHorizontal: s(8)
+                                }}>
+                                </View>
+                            )}
+                        />
+                    </View>
+                ) : (
+                    <View style={{ flex: 1, backgroundColor: BRAND.bg }}>
+                        <FlatList
+                            data={[1, 1, 1, 1, 1, 1,3,3,3,7]}
+                            style={{ flex: 1 }}
+                            contentContainerStyle={{gap: s(10),
+                                alignItems: 'center',
+                                paddingTop: s(20),
+                                paddingHorizontal: s(20) }}
+                            keyExtractor={(item, index) => index.toString()}
+                            numColumns={2}
+                            renderItem={renderProductCard}
+                        />
+                    </View>
+                )
             )}
         </SafeAreaView>
     )
@@ -619,12 +673,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: s(20),
         paddingVertical: s(12),
         backgroundColor: BRAND.bg,
-        borderBottomWidth: s(1),
         borderBottomColor: BRAND.border,
     },
     imageBox: {
-        width: s(50),
-        height: s(50),
+        width: s(40),
+        height: s(40),
+        padding: s(7),
         backgroundColor: BRAND.white,
         borderWidth: s(1),
         borderColor: BRAND.border,
@@ -658,7 +712,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: s(20),
         paddingVertical: s(15),
         backgroundColor: BRAND.bg,
-        borderTopWidth: s(1),
         borderTopColor: BRAND.border,
     },
     iconBox: {
