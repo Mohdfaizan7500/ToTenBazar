@@ -1,4 +1,4 @@
-import { StatusBar, StyleSheet, TextInput, TouchableOpacity, View, Animated, Text, FlatList, Image, Dimensions } from 'react-native'
+import { StatusBar, StyleSheet, TextInput, TouchableOpacity, View, Animated, Text, FlatList, Image, Dimensions, ActivityIndicator } from 'react-native'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import colors, { BRAND, DARK } from '../../src/constant/colors'
@@ -143,15 +143,26 @@ const SearchScreen = () => {
         }
     }, []);
 
-    // API call function
+    // API call function - FIXED: Don't set isTyping to false immediately
     const fetchBannerProducts = useCallback(async (searchTerm, page = 1, length = 10) => {
+        // Don't call API if search term is empty
+        if (!searchTerm.trim()) {
+            setSearchResults([]);
+            setHasMore(true);
+            setCurrentPage(1);
+            setIsTyping(false);
+            setShowProductCards(true);
+            setProductCardsData(staticProductData);
+            return;
+        }
+
         try {
             setLoader(true);
-            setIsTyping(false); // Hide typing state when API call starts
+            // REMOVED: setIsTyping(false) from here - let it stay true during API call
 
             const url = `${BASE_URL}/prod/product_suggetion?prod_name=${encodeURIComponent(searchTerm.trim())}`;
 
-            console.log('🔍 Fetching banner products from:', url);
+            console.log('🔍 Fetching banner products for:', searchTerm);
 
             const response = await fetch(url, {
                 method: "GET",
@@ -188,7 +199,7 @@ const SearchScreen = () => {
             // Check for the exact structure from your response
             if (data.data && Array.isArray(data.data)) {
                 products = data.data;
-                console.log(`🎯 Found ${products.length} products in data array`);
+                console.log(`🎯 Found ${products.length} products for "${searchTerm}"`);
             } else {
                 console.log('⚠️ Unexpected response structure:', data);
             }
@@ -210,6 +221,7 @@ const SearchScreen = () => {
             throw error;
         } finally {
             setLoader(false);
+            setIsTyping(false); // FIXED: Set isTyping to false only when API call completes
         }
     }, [accessToken]);
 
@@ -261,61 +273,45 @@ const SearchScreen = () => {
         await fetchProductByName(product.name);
     }, []);
 
-    // Debounced search function
-    const debouncedSearch = useCallback((searchTerm, page = 1) => {
-        // Clear existing timeout
+    // UPDATED: Immediate search function (no debounce)
+    const immediateSearch = useCallback((searchTerm, page = 1) => {
+        // Clear any existing timeout
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
         }
 
-        // Show skeleton loader immediately when typing starts
+        // Show typing state immediately
         if (page === 1) {
             setIsTyping(true);
             setShowProductCards(false); // Hide product cards when typing starts
             setSelectedProduct(null); // Clear selected product
         }
 
-        // Set new timeout
-        debounceTimeoutRef.current = setTimeout(() => {
-            if (searchTerm.trim() !== '') {
-                console.log('🔍 Searching for:', searchTerm, 'page:', page);
-                fetchBannerProducts(searchTerm, page).catch(error => {
-                    console.log('❌ Search failed:', error.message);
-                });
-            } else {
-                // Clear results if search is empty
-                setSearchResults([]);
-                setHasMore(true);
-                setCurrentPage(1);
-                setIsTyping(false);
-                setShowProductCards(true); // Show product cards when search is empty
-                setProductCardsData(staticProductData); // Reset to static data when search is cleared
-                setSelectedProduct(null);
-            }
-        }, 500); // Reduced to 500ms for better UX
-    }, [fetchBannerProducts]);
-
-    // Handle text input change
-    const handleTextChange = (text) => {
-        setSearchText(text);
-
-        if (text.trim() === '') {
-            // Clear immediately if text is empty
-            if (debounceTimeoutRef.current) {
-                clearTimeout(debounceTimeoutRef.current);
-            }
+        // Call API immediately for every letter
+        if (searchTerm.trim() !== '') {
+            console.log('🔍 Immediate search for:', searchTerm, 'page:', page);
+            fetchBannerProducts(searchTerm, page).catch(error => {
+                console.log('❌ Search failed:', error.message);
+                setIsTyping(false); // FIXED: Also set isTyping to false on error
+            });
+        } else {
+            // Clear results if search is empty
             setSearchResults([]);
             setHasMore(true);
             setCurrentPage(1);
             setIsTyping(false);
             setShowProductCards(true); // Show product cards when search is empty
-            setProductCardsData(staticProductData); // Reset to static data
+            setProductCardsData(staticProductData); // Reset to static data when search is cleared
             setSelectedProduct(null);
-            setShowProductSkeleton(false);
-        } else {
-            // Trigger debounced search
-            debouncedSearch(text, 1);
         }
+    }, [fetchBannerProducts]);
+
+    // UPDATED: Handle text input change - call API for every letter
+    const handleTextChange = (text) => {
+        setSearchText(text);
+        
+        // Call API immediately for every letter change
+        immediateSearch(text, 1);
     };
 
     // Load more products for infinite scroll
@@ -363,78 +359,53 @@ const SearchScreen = () => {
         ).start();
     };
 
+    // NEW: Simple Loader Component for API fetching
+    const SimpleLoader = () => (
+        <View style={styles.simpleLoaderContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.gray[400] }]}>
+                Searching for "{searchText}"...
+            </Text>
+        </View>
+    );
+
+    // NEW: Loading More Component for infinite scroll
+    const LoadingMoreComponent = () => (
+        <View style={styles.loadingMoreContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.loadingMoreText, { color: colors.gray[400] }]}>
+                Loading more products...
+            </Text>
+        </View>
+    );
+
     // Product Skeleton Loader Component with Shine Effect
     const ProductSkeletonLoader = () => {
         const skeletonData = Array.from({ length: 10 }, (_, index) => ({ id: `skeleton-${index}` }));
         
         return (
-            <FlatList
-                contentContainerStyle={{
-                    gap: s(10),
-                    alignItems: 'center',
-                    paddingTop: s(20),
-                    paddingHorizontal: s(20),
-                    paddingBottom: s(20)
-                }}
-                data={skeletonData}
-                keyExtractor={(item) => item.id}
-                numColumns={2}
-                renderItem={({ index }) => (
-                    <View style={styles.productSkeletonContainer}>
-                        {/* Product Image Skeleton */}
-                        <View style={styles.productImageSkeleton}>
-                            <Animated.View
-                                style={[
-                                    styles.productShineEffect,
-                                    {
-                                        transform: [{
-                                            translateX: productShineAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [-100, 300]
-                                            })
-                                        }]
-                                    }
-                                ]}
-                            />
-                        </View>
-
-                        {/* Product Name Skeleton */}
-                        <View style={styles.productNameSkeleton}>
-                            <Animated.View
-                                style={[
-                                    styles.productShineEffect,
-                                    {
-                                        transform: [{
-                                            translateX: productShineAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [-100, 300]
-                                            })
-                                        }]
-                                    }
-                                ]}
-                            />
-                        </View>
-
-                        {/* Product Weight Skeleton */}
-                        <View style={styles.productWeightSkeleton}>
-                            <Animated.View
-                                style={[
-                                    styles.productShineEffect,
-                                    {
-                                        transform: [{
-                                            translateX: productShineAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [-100, 300]
-                                            })
-                                        }]
-                                    }
-                                ]}
-                            />
-                        </View>
-
-                        {/* Price Container Skeleton */}
-                        <View style={styles.priceContainerSkeleton}>
-                            <View style={styles.priceSkeleton}>
+            <View style={{ flex: 1 }}>
+                <View style={styles.skeletonHeader}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.skeletonHeaderText, { color: colors.gray[400] }]}>
+                        Loading products...
+                    </Text>
+                </View>
+                <FlatList
+                    contentContainerStyle={{
+                        gap: s(10),
+                        alignItems: 'center',
+                        paddingTop: s(10),
+                        paddingHorizontal: s(20),
+                        paddingBottom: s(20)
+                    }}
+                    data={skeletonData}
+                    keyExtractor={(item) => item.id}
+                    numColumns={2}
+                    renderItem={({ index }) => (
+                        <View style={styles.productSkeletonContainer}>
+                            {/* Product Image Skeleton */}
+                            <View style={styles.productImageSkeleton}>
                                 <Animated.View
                                     style={[
                                         styles.productShineEffect,
@@ -449,7 +420,77 @@ const SearchScreen = () => {
                                     ]}
                                 />
                             </View>
-                            <View style={styles.originalPriceSkeleton}>
+
+                            {/* Product Name Skeleton */}
+                            <View style={styles.productNameSkeleton}>
+                                <Animated.View
+                                    style={[
+                                        styles.productShineEffect,
+                                        {
+                                            transform: [{
+                                                translateX: productShineAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: [-100, 300]
+                                                })
+                                            }]
+                                        }
+                                    ]}
+                                />
+                            </View>
+
+                            {/* Product Weight Skeleton */}
+                            <View style={styles.productWeightSkeleton}>
+                                <Animated.View
+                                    style={[
+                                        styles.productShineEffect,
+                                        {
+                                            transform: [{
+                                                translateX: productShineAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: [-100, 300]
+                                                })
+                                            }]
+                                        }
+                                    ]}
+                                />
+                            </View>
+
+                            {/* Price Container Skeleton */}
+                            <View style={styles.priceContainerSkeleton}>
+                                <View style={styles.priceSkeleton}>
+                                    <Animated.View
+                                        style={[
+                                            styles.productShineEffect,
+                                            {
+                                                transform: [{
+                                                    translateX: productShineAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [-100, 300]
+                                                    })
+                                                }]
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                                <View style={styles.originalPriceSkeleton}>
+                                    <Animated.View
+                                        style={[
+                                            styles.productShineEffect,
+                                            {
+                                                transform: [{
+                                                    translateX: productShineAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [-100, 300]
+                                                    })
+                                                }]
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Add Button Skeleton */}
+                            <View style={styles.addButtonSkeleton}>
                                 <Animated.View
                                     style={[
                                         styles.productShineEffect,
@@ -465,58 +506,31 @@ const SearchScreen = () => {
                                 />
                             </View>
                         </View>
-
-                        {/* Add Button Skeleton */}
-                        <View style={styles.addButtonSkeleton}>
-                            <Animated.View
-                                style={[
-                                    styles.productShineEffect,
-                                    {
-                                        transform: [{
-                                            translateX: productShineAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [-100, 300]
-                                            })
-                                        }]
-                                    }
-                                ]}
-                            />
-                        </View>
-                    </View>
-                )}
-                key="product-skeleton-loader" // Add unique key
-            />
+                    )}
+                    key="product-skeleton-loader"
+                />
+            </View>
         )
     }
 
-    // Typing Loader Component - FIXED: Add proper key
-    const Loader = () => {
+    // Typing Loader Component - UPDATED: Added header with ActivityIndicator
+    const TypingLoader = () => {
         const skeletonData = Array.from({ length: 8 }, (_, index) => ({ id: `typing-skeleton-${index}` }));
         
         return (
-            <FlatList
-                data={skeletonData}
-                keyExtractor={(item) => item.id}
-                renderItem={() => (
-                    <View style={styles.loaderContainer}>
-                        <View style={[styles.box, { backgroundColor: colors.gray[200] }]}>
-                            <Animated.View
-                                style={[
-                                    styles.shineEffect,
-                                    {
-                                        transform: [{
-                                            translateX: shineAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [-100, 300]
-                                            })
-                                        }]
-                                    }
-                                ]}
-                            />
-                        </View>
-
-                        <View style={[styles.textContainer, { flex: 1 }]}>
-                            <View style={[styles.textLine, { backgroundColor: colors.gray[200], width: '100%' }]}>
+            <View style={{ flex: 1 }}>
+                {/* <View style={styles.skeletonHeader}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.skeletonHeaderText, { color: colors.gray[400] }]}>
+                        Searching...
+                    </Text>
+                </View> */}
+                <FlatList
+                    data={skeletonData}
+                    keyExtractor={(item) => item.id}
+                    renderItem={() => (
+                        <View style={styles.loaderContainer}>
+                            <View style={[styles.box, { backgroundColor: colors.gray[200] }]}>
                                 <Animated.View
                                     style={[
                                         styles.shineEffect,
@@ -531,12 +545,30 @@ const SearchScreen = () => {
                                     ]}
                                 />
                             </View>
+
+                            <View style={[styles.textContainer, { flex: 1 }]}>
+                                <View style={[styles.textLine, { backgroundColor: colors.gray[200], width: '100%' }]}>
+                                    <Animated.View
+                                        style={[
+                                            styles.shineEffect,
+                                            {
+                                                transform: [{
+                                                    translateX: shineAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [-100, 300]
+                                                    })
+                                                }]
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
                         </View>
-                    </View>
-                )}
-                showsVerticalScrollIndicator={false}
-                key="typing-loader" // Add unique key
-            />
+                    )}
+                    showsVerticalScrollIndicator={false}
+                    key="typing-loader"
+                />
+            </View>
         )
     }
 
@@ -627,7 +659,7 @@ const SearchScreen = () => {
         // Handle search functionality
         console.log('Search for:', searchText);
         if (searchText.trim() !== '') {
-            // Clear any pending debounce and search immediately
+            // Clear any pending timeout and search immediately
             if (debounceTimeoutRef.current) {
                 clearTimeout(debounceTimeoutRef.current);
             }
@@ -807,15 +839,18 @@ const SearchScreen = () => {
                 )}
             </View>
 
-            {/* Main Content Area */}
+            {/* Main Content Area - UPDATED: Fixed loader visibility */}
             {showProductSkeleton ? (
-                // Show product skeleton loader while API is fetching
+                // Show product skeleton loader while API is fetching product details
                 <ProductSkeletonLoader />
             ) : isTyping ? (
-                // Show typing loader while user is typing
-                <Loader />
+                // Show typing loader while user is typing - NOW VISIBLE!
+                <TypingLoader />
+            ) : loader ? (
+                // Show simple loader when API is fetching search results
+                <SimpleLoader />
             ) : showProductCards ? (
-                // Show product cards with actual API data or static data - FIXED: Add unique key
+                // Show product cards with actual API data or static data
                 <View style={{ flex: 1, backgroundColor: BRAND.bg }}>
                     <FlatList
                         data={productCardsDataFormatted}
@@ -834,11 +869,11 @@ const SearchScreen = () => {
                         numColumns={2}
                         renderItem={renderProductCard}
                         showsVerticalScrollIndicator={false}
-                        key="product-cards-grid" // Add unique key
+                        key="product-cards-grid"
                     />
                 </View>
             ) : showResults ? (
-                // Show search suggestions from API - FIXED: Add unique key
+                // Show search suggestions from API
                 <View style={{ backgroundColor: colors.bg, flex: 1 }}>
                     <FlatList
                         data={searchResults}
@@ -852,11 +887,9 @@ const SearchScreen = () => {
                         ListFooterComponent={() => (
                             <>
                                 {loader && searchResults.length > 0 && (
-                                    <View style={styles.loadingMoreContainer}>
-                                        <Text style={styles.loadingMoreText}>Loading more products...</Text>
-                                    </View>
+                                    <LoadingMoreComponent />
                                 )}
-                                {searchText.length > 0 && (
+                                {searchText.length > 0 && !loader && (
                                     <TouchableOpacity
                                         style={[styles.showAllContainer]}
                                         onPress={handleShowAllResults}
@@ -875,7 +908,16 @@ const SearchScreen = () => {
                                 )}
                             </>
                         )}
-                        key="search-results-list" // Add unique key
+                        // ListEmptyComponent={() => (
+                        //     !loader && searchText.trim() !== '' ? (
+                        //         <View style={styles.noResultsContainer}>
+                        //             <Text style={[styles.noResultsText, { color: colors.gray[400] }]}>
+                        //                 No products found for "{searchText}"
+                        //             </Text>
+                        //         </View>
+                        //     ) : null
+                        // )}
+                        key="search-results-list"
                     />
                 </View>
             ) : null}
@@ -947,6 +989,33 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
         textAlignVertical: 'center',
     },
+    // NEW: Simple Loader Styles
+    simpleLoaderContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: BRAND.bg,
+    },
+    loadingText: {
+        marginTop: s(15),
+        fontSize: s(14),
+        textAlign: 'center',
+    },
+    // NEW: Skeleton Header
+    skeletonHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: s(15),
+        backgroundColor: BRAND.bg,
+        borderBottomWidth: s(1),
+        borderBottomColor: BRAND.border,
+    },
+    skeletonHeaderText: {
+        marginLeft: s(10),
+        fontSize: s(14),
+    },
+    // Existing loader styles
     loaderContainer: {
         gap: s(15),
         backgroundColor: BRAND.bg,
@@ -1137,6 +1206,9 @@ const styles = StyleSheet.create({
     loadingMoreContainer: {
         padding: s(15),
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: s(10),
     },
     loadingMoreText: {
         fontSize: s(12),
@@ -1167,6 +1239,7 @@ const styles = StyleSheet.create({
     productImage: {
         width: "80%",
         height: "80%",
+        mixBlendMode:'multiply'
     },
     productName: {
         fontSize: s(12),

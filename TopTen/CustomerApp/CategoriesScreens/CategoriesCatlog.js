@@ -701,6 +701,7 @@ const styles = StyleSheet.create({
     categoryImage: {
         width: "80%",
         height: "80%",
+        mixBlendMode:"multiply"
     },
     categoryTitle: {
         fontWeight: '800',

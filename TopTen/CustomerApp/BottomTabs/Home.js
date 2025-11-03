@@ -944,7 +944,8 @@ const styles = StyleSheet.create({
   },
   categoryImageFull: {
     width: "100%",
-    height: "100%"
+    height: "100%",
+    // mixBlendMode:"multiply"
   },
   categoryItemTitle: {
     fontSize: s(11),
