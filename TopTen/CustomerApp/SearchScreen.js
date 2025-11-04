@@ -21,15 +21,15 @@ const SearchScreen = () => {
     const [searchResults, setSearchResults] = useState([]);
     const [hasMore, setHasMore] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [isTyping, setIsTyping] = useState(false); // Track typing state
-    const [showProductCards, setShowProductCards] = useState(true); // Show product cards initially
-    const [selectedProduct, setSelectedProduct] = useState(null); // Track selected product
-    const [showProductSkeleton, setShowProductSkeleton] = useState(false); // Show product skeleton loader
-    const [productCardsData, setProductCardsData] = useState([]); // Store product data for cards
+    const [isTyping, setIsTyping] = useState(false);
+    const [showProductCards, setShowProductCards] = useState(true);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [showProductSkeleton, setShowProductSkeleton] = useState(false);
+    const [productCardsData, setProductCardsData] = useState([]);
     const slideAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const shineAnim = useRef(new Animated.Value(0)).current;
-    const productShineAnim = useRef(new Animated.Value(0)).current; // Separate shine anim for product skeleton
+    const productShineAnim = useRef(new Animated.Value(0)).current;
 
     // Debounce ref
     const debounceTimeoutRef = useRef(null);
@@ -52,113 +52,28 @@ const SearchScreen = () => {
         "Sugar"
     ];
 
-    // Static product data for first-time render
-    const staticProductData = [
-        {
-            id: 1,
-            name: "Amul Fresh Milk",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹60",
-            originalPrice: "₹70",
-            weight: "500ml"
-        },
-        {
-            id: 2,
-            name: "Britannia Bread",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹45",
-            originalPrice: "₹50",
-            weight: "400g"
-        },
-        {
-            id: 3,
-            name: "Fresh Eggs",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹80",
-            originalPrice: "₹90",
-            weight: "6 pcs"
-        },
-        {
-            id: 4,
-            name: "Amul Butter",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹55",
-            originalPrice: "₹60",
-            weight: "100g"
-        },
-        {
-            id: 5,
-            name: "Basmati Rice",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹120",
-            originalPrice: "₹140",
-            weight: "1kg"
-        },
-        {
-            id: 6,
-            name: "Fresh Apples",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹180",
-            originalPrice: "₹200",
-            weight: "1kg"
-        },
-        {
-            id: 7,
-            name: "Yogurt",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹40",
-            originalPrice: "₹45",
-            weight: "400g"
-        },
-        {
-            id: 8,
-            name: "Sugar",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹45",
-            originalPrice: "₹50",
-            weight: "1kg"
-        },
-        {
-            id: 9,
-            name: "Potatoes",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹30",
-            originalPrice: "₹35",
-            weight: "1kg"
-        },
-        {
-            id: 10,
-            name: "Tomatoes",
-            image: "https://cdn.grofers.com/app/images/products/full_screen/pro_379579.jpg?ts=1706183506",
-            price: "₹25",
-            originalPrice: "₹30",
-            weight: "500g"
-        }
-    ];
-
-    // Set static data on component mount
+    // Fetch initial products on component mount
     useEffect(() => {
-        if (productCardsData.length === 0) {
-            setProductCardsData(staticProductData);
-        }
+        // Show skeleton when component first loads
+        setShowProductSkeleton(true);
+        fetchProductByName("");
     }, []);
 
-    // API call function - FIXED: Don't set isTyping to false immediately
+    // API call function for search suggestions
     const fetchBannerProducts = useCallback(async (searchTerm, page = 1, length = 10) => {
-        // Don't call API if search term is empty
         if (!searchTerm.trim()) {
             setSearchResults([]);
             setHasMore(true);
             setCurrentPage(1);
             setIsTyping(false);
             setShowProductCards(true);
-            setProductCardsData(staticProductData);
+            // Fetch default products when search is cleared
+            fetchProductByName("");
             return;
         }
 
         try {
             setLoader(true);
-            // REMOVED: setIsTyping(false) from here - let it stay true during API call
 
             const url = `${BASE_URL}/prod/product_suggetion?prod_name=${encodeURIComponent(searchTerm.trim())}`;
 
@@ -178,7 +93,6 @@ const SearchScreen = () => {
                 const errorText = await response.text();
                 console.log('❌ API Error Response:', errorText);
 
-                // Handle specific error cases
                 if (response.status === 400) {
                     throw new Error('Invalid request parameters. Please try again.');
                 } else if (response.status === 401) {
@@ -193,10 +107,9 @@ const SearchScreen = () => {
             const data = await response.json();
             console.log('✅ Banner products API response:', data);
 
-            // Handle the specific response structure
             let products = [];
 
-            // Check for the exact structure from your response
+            // Handle API response data structure
             if (data.data && Array.isArray(data.data)) {
                 products = data.data;
                 console.log(`🎯 Found ${products.length} products for "${searchTerm}"`);
@@ -204,14 +117,12 @@ const SearchScreen = () => {
                 console.log('⚠️ Unexpected response structure:', data);
             }
 
-            // Set search results based on the response
             if (page === 1) {
                 setSearchResults(products);
             } else {
                 setSearchResults(prev => [...prev, ...products]);
             }
 
-            // Check if there are more pages
             setHasMore(false);
             setCurrentPage(page);
 
@@ -221,42 +132,76 @@ const SearchScreen = () => {
             throw error;
         } finally {
             setLoader(false);
-            setIsTyping(false); // FIXED: Set isTyping to false only when API call completes
+            setIsTyping(false);
         }
     }, [accessToken]);
 
+    // Fetch products by name - UPDATED to handle API response properly
     const fetchProductByName = async (productName) => {
         try {
-            setShowProductSkeleton(true); // Show skeleton loader when API call starts
-            setShowProductCards(false); // Hide product cards
+            // Only show skeleton for initial load or when clearing search
+            if (!productName || productName.length <= 0) {
+                setShowProductSkeleton(true);
+                setShowProductCards(false);
+            }
 
-            const response = await fetch(`${BASE_URL}/prod/product_suggetion?prod_name=${productName}`, {
+            let url = '';
+            if (!productName || productName.length <= 0) {
+                console.log("Fetching default products");
+                url = `${BASE_URL}/prod/get_banner_products?page=1&length=22`;
+            } else {
+                url = `${BASE_URL}/prod/banner_product?page=1&length=5&prod_name=${productName}`
+            }
+
+            console.log('📡 API URL:', url);
+
+            const response = await fetch(url, {
                 method: "GET",
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                     "Content-Type": "application/json",
                 },
-            })
-            
-            const data = await response.json();
-            console.log('Response:', data);
+            });
 
-            // Set the product cards data from API response
-            if (data.data && Array.isArray(data.data)) {
-                setProductCardsData(data.data);
+            console.log('📊 Response status:', response.status);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Hide skeleton and show product cards immediately when API response is received
+            const data = await response.json();
+            console.log('✅ API Response data:', data);
+
+            // Handle the API response data properly
+            let products = [];
+
+            // Check for different possible response structures
+            if (data.data && Array.isArray(data.data)) {
+                products = data.data;
+            } else if (Array.isArray(data)) {
+                products = data;
+            } else if (data.products && Array.isArray(data.products)) {
+                products = data.products;
+            } else {
+                console.log('⚠️ Unknown response structure:', data);
+            }
+
+            console.log(`📦 Processed ${products.length} products from API`);
+
+            // Set the product cards data from API response
+            setProductCardsData(products);
+
+            // Hide skeleton and show product cards
             setShowProductSkeleton(false);
             setShowProductCards(true);
 
             return data;
-        }
-        catch (error) {
-            console.log('Error:', error);
-            // Hide skeleton and show product cards even on error
+        } catch (error) {
+            console.log('❌ Error fetching products:', error);
+            // Hide skeleton and show empty state
             setShowProductSkeleton(false);
             setShowProductCards(true);
+            setProductCardsData([]); // Set empty array on error
             return null;
         }
     }
@@ -266,51 +211,46 @@ const SearchScreen = () => {
         console.log('select:', product.name);
         setSearchText(product.name);
         setSelectedProduct(product);
-        setShowProductCards(false); // Hide suggestions
-        setShowProductSkeleton(true); // Show product skeleton loader
+        setShowProductCards(false);
+        setShowProductSkeleton(true);
 
-        // Fetch product data - the skeleton will hide when API response is received
+        // Fetch product data
         await fetchProductByName(product.name);
     }, []);
 
-    // UPDATED: Immediate search function (no debounce)
+    // Immediate search function
     const immediateSearch = useCallback((searchTerm, page = 1) => {
-        // Clear any existing timeout
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
         }
 
-        // Show typing state immediately
         if (page === 1) {
             setIsTyping(true);
-            setShowProductCards(false); // Hide product cards when typing starts
-            setSelectedProduct(null); // Clear selected product
+            setShowProductCards(false);
+            setSelectedProduct(null);
         }
 
-        // Call API immediately for every letter
         if (searchTerm.trim() !== '') {
             console.log('🔍 Immediate search for:', searchTerm, 'page:', page);
             fetchBannerProducts(searchTerm, page).catch(error => {
                 console.log('❌ Search failed:', error.message);
-                setIsTyping(false); // FIXED: Also set isTyping to false on error
+                setIsTyping(false);
             });
         } else {
-            // Clear results if search is empty
             setSearchResults([]);
             setHasMore(true);
             setCurrentPage(1);
             setIsTyping(false);
-            setShowProductCards(true); // Show product cards when search is empty
-            setProductCardsData(staticProductData); // Reset to static data when search is cleared
+            setShowProductCards(true);
+            // Fetch default products when search is cleared
+            fetchProductByName("");
             setSelectedProduct(null);
         }
     }, [fetchBannerProducts]);
 
-    // UPDATED: Handle text input change - call API for every letter
+    // Handle text input change
     const handleTextChange = (text) => {
         setSearchText(text);
-        
-        // Call API immediately for every letter change
         immediateSearch(text, 1);
     };
 
@@ -359,7 +299,47 @@ const SearchScreen = () => {
         ).start();
     };
 
-    // NEW: Simple Loader Component for API fetching
+    // Handle clear search - UPDATED to show product skeleton
+    const handleClearSearch = () => {
+        setSearchText('');
+        setSearchResults([]);
+        setHasMore(true);
+        setCurrentPage(1);
+        setIsTyping(false);
+        
+        // Show product skeleton while fetching default products
+        setShowProductSkeleton(true);
+        setShowProductCards(false);
+        
+        // Fetch default products when search is cleared
+        fetchProductByName("");
+        setSelectedProduct(null);
+        
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+    };
+
+    const handleSearchSubmit = () => {
+        console.log('Search for:', searchText);
+        if (searchText.trim() !== '') {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+            setIsTyping(false);
+            setShowProductCards(false);
+            fetchBannerProducts(searchText, 1).catch(error => {
+                console.log('❌ Search submit failed:', error.message);
+            });
+        }
+    };
+
+    const handleShowAllResults = () => {
+        console.log('Show all results for:', searchText);
+        fetchProductByName(searchText);
+    };
+
+    // Simple Loader Component for API fetching
     const SimpleLoader = () => (
         <View style={styles.simpleLoaderContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -369,7 +349,7 @@ const SearchScreen = () => {
         </View>
     );
 
-    // NEW: Loading More Component for infinite scroll
+    // Loading More Component for infinite scroll
     const LoadingMoreComponent = () => (
         <View style={styles.loadingMoreContainer}>
             <ActivityIndicator size="small" color={colors.primary} />
@@ -379,10 +359,38 @@ const SearchScreen = () => {
         </View>
     );
 
+    // Empty State Component - UPDATED to include Show All button
+    const EmptyStateComponent = () => (
+        <View style={styles.emptyStateContainer}>
+            <Text style={[styles.emptyStateText, { color: colors.gray[400] }]}>
+                {searchText ? `No products found for "${searchText}"` : 'No products available'}
+            </Text>
+            
+            {/* Show All Results Button when search has text but no results */}
+            {searchText && !loader && !isTyping && (
+                <TouchableOpacity
+                    style={[styles.showAllContainer, styles.showAllButton]}
+                    onPress={handleShowAllResults}
+                >
+                    <View style={[styles.iconBox, {
+                        backgroundColor: colors.primary + '10'
+                    }]}>
+                        <SearchIcon width={s(20)} height={s(20)} stroke={colors.primary} />
+                    </View>
+                    <View style={[styles.showAllTextContainer]}>
+                        <Text style={{ color: colors.gray[400] }}>Show all results for </Text>
+                        <Text style={styles.searchQueryText}>{searchText}</Text>
+                    </View>
+                    <RightArrowICon width={s(15)} height={s(15)} stroke={colors.gray[400]} />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+
     // Product Skeleton Loader Component with Shine Effect
     const ProductSkeletonLoader = () => {
         const skeletonData = Array.from({ length: 10 }, (_, index) => ({ id: `skeleton-${index}` }));
-        
+
         return (
             <View style={{ flex: 1 }}>
                 <View style={styles.skeletonHeader}>
@@ -461,16 +469,16 @@ const SearchScreen = () => {
                                     <Animated.View
                                         style={[
                                             styles.productShineEffect,
-                                            {
-                                                transform: [{
-                                                    translateX: productShineAnim.interpolate({
-                                                        inputRange: [0, 1],
-                                                        outputRange: [-100, 300]
-                                                    })
-                                                }]
-                                            }
-                                        ]}
-                                    />
+                                        {
+                                            transform: [{
+                                                translateX: productShineAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: [-100, 300]
+                                                })
+                                            }]
+                                        }
+                                    ]}
+                                />
                                 </View>
                                 <View style={styles.originalPriceSkeleton}>
                                     <Animated.View
@@ -513,18 +521,12 @@ const SearchScreen = () => {
         )
     }
 
-    // Typing Loader Component - UPDATED: Added header with ActivityIndicator
+    // Typing Loader Component
     const TypingLoader = () => {
         const skeletonData = Array.from({ length: 8 }, (_, index) => ({ id: `typing-skeleton-${index}` }));
-        
+
         return (
             <View style={{ flex: 1 }}>
-                {/* <View style={styles.skeletonHeader}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.skeletonHeaderText, { color: colors.gray[400] }]}>
-                        Searching...
-                    </Text>
-                </View> */}
                 <FlatList
                     data={skeletonData}
                     keyExtractor={(item) => item.id}
@@ -574,12 +576,10 @@ const SearchScreen = () => {
 
     // Animation function for keywords
     const startKeywordAnimation = () => {
-        const animationDuration = 2000; // 2 seconds per keyword
+        const animationDuration = 2000;
 
         const animate = () => {
-            // Only animate if search text is empty
             if (searchText === '' && showProductCards) {
-                // Slide out current keyword and fade out
                 Animated.parallel([
                     Animated.timing(slideAnim, {
                         toValue: -20,
@@ -592,16 +592,13 @@ const SearchScreen = () => {
                         useNativeDriver: true,
                     })
                 ]).start(() => {
-                    // Change to next keyword
                     setCurrentKeywordIndex((prevIndex) =>
                         (prevIndex + 1) % searchKeywords.length
                     );
 
-                    // Reset animation values for new keyword (start from bottom)
                     slideAnim.setValue(20);
                     fadeAnim.setValue(0);
 
-                    // Slide in new keyword and fade in
                     Animated.parallel([
                         Animated.timing(slideAnim, {
                             toValue: 0,
@@ -618,7 +615,6 @@ const SearchScreen = () => {
             }
         };
 
-        // Start the animation loop
         const interval = setInterval(animate, animationDuration);
         return interval;
     };
@@ -633,72 +629,92 @@ const SearchScreen = () => {
             if (animationInterval) {
                 clearInterval(animationInterval);
             }
-            // Cleanup timeout on unmount
             if (debounceTimeoutRef.current) {
                 clearTimeout(debounceTimeoutRef.current);
             }
         };
-    }, [searchText, showProductCards]); // Re-run when searchText or showProductCards changes
+    }, [searchText, showProductCards]);
 
-    const handleClearSearch = () => {
-        setSearchText('');
-        setSearchResults([]);
-        setHasMore(true);
-        setCurrentPage(1);
-        setIsTyping(false);
-        setShowProductCards(true);
-        setProductCardsData(staticProductData); // Reset to static data
-        setSelectedProduct(null);
-        setShowProductSkeleton(false);
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-        }
-    };
-
-    const handleSearchSubmit = () => {
-        // Handle search functionality
-        console.log('Search for:', searchText);
-        if (searchText.trim() !== '') {
-            // Clear any pending timeout and search immediately
-            if (debounceTimeoutRef.current) {
-                clearTimeout(debounceTimeoutRef.current);
-            }
-            setIsTyping(false);
-            setShowProductCards(false);
-            fetchBannerProducts(searchText, 1).catch(error => {
-                console.log('❌ Search submit failed:', error.message);
-            });
-        }
-    };
-
-    const handleShowAllResults = () => {
-        // Navigate to search results screen or show all results
-        console.log('Show all results for:', searchText);
-        navigation.navigate('SearchResultsScreen', {
-            searchQuery: searchText,
-            products: searchResults
-        });
-    };
-
-    // Safe image source function
+    // UPDATED: Improved image source function with better URL handling
     const getImageSource = (imageUri) => {
+        console.log('🖼️ Processing image URI:', imageUri);
+
+        // Handle array of images - take first image's image_url
+        if (Array.isArray(imageUri) && imageUri.length > 0) {
+            const firstImage = imageUri[0];
+            const imageUrl = firstImage?.image_url || firstImage?.image;
+            console.log('🖼️ Extracted from array:', imageUrl);
+            return getImageSource(imageUrl); // Recursively process the extracted URL
+        }
+
+        // Handle image object with image_url
+        if (imageUri && typeof imageUri === 'object' && imageUri.image_url) {
+            console.log('🖼️ Extracted from object:', imageUri.image_url);
+            return getImageSource(imageUri.image_url);
+        }
+
+        // Handle string URLs
         if (!imageUri || typeof imageUri !== 'string') {
+            console.log('🖼️ Using default image - invalid URI');
             return require('../../src/images/default.jpg');
         }
-        
-        // Check if the URI is valid
+
+        // Check if it's a complete URL
         if (imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
+            console.log('🖼️ Using network image:', imageUri);
             return { uri: imageUri };
         }
-        
+
+        // Check if it's a relative path that needs base URL
+        if (imageUri.startsWith('/') || imageUri.includes('uploads/') || imageUri.includes('toptenbazar/')) {
+            const fullUrl = `${BASE_URL}${imageUri.startsWith('/') ? '' : '/'}${imageUri}`;
+            console.log('🖼️ Constructed full URL:', fullUrl);
+            return { uri: fullUrl };
+        }
+
+        console.log('🖼️ Using default image - unknown format');
         return require('../../src/images/default.jpg');
     };
 
-    // Render search result item
+    // UPDATED: Improved price formatting with division by 100
+    const formatPrice = (price) => {
+        console.log('💰 Raw price:', price, 'Type:', typeof price);
+
+        let numericPrice = 0;
+
+        // Convert to number and divide by 100
+        if (typeof price === 'number') {
+            numericPrice = price / 100;
+        } else if (typeof price === 'string') {
+            // Remove any non-numeric characters except decimal point
+            const cleanPrice = price.replace(/[^\d.]/g, '');
+            numericPrice = parseFloat(cleanPrice) / 100;
+        }
+
+        // Handle NaN case
+        if (isNaN(numericPrice)) {
+            numericPrice = 0;
+        }
+
+        const formattedPrice = `₹${numericPrice}`;
+        console.log('💰 Formatted price:', formattedPrice);
+        return formattedPrice;
+    };
+
+    // UPDATED: Get product weight/unit information
+    const getProductWeight = (item) => {
+        const weight = item?.weight || item?.unit || item?.quantity || item?.size || '500g';
+        console.log('⚖️ Product weight:', weight);
+        return weight;
+    };
+
+    // Render search result item - UPDATED with better image handling
     const renderSearchItem = ({ item, index }) => {
-        const productImage = item?.image;
-        const productName = item?.name || 'Product Name';
+        const productImage = item?.image || item?.image?.image_url || item?.image[0]?.image_url || item?.product_image;
+        const productName = item?.name || item?.product_name || 'Product Name';
         const productId = item?.id || index;
+
+        console.log('🔍 Search Item:', { productImage, productName });
 
         return (
             <TouchableOpacity
@@ -710,7 +726,10 @@ const SearchScreen = () => {
                         source={getImageSource(productImage)}
                         style={styles.searchItemImage}
                         resizeMode='cover'
-                        onError={(error) => console.log('❌ Image load error:', error.nativeEvent.error)}
+                        onError={(error) => {
+                            console.log('❌ Search item image load error:', error.nativeEvent.error);
+                            console.log('❌ Problematic image URL:', productImage);
+                        }}
                     />
                 </View>
                 <View style={[styles.productInfoContainer]}>
@@ -722,16 +741,21 @@ const SearchScreen = () => {
         );
     };
 
-    // Render product card with actual API data
+    // UPDATED: Render product card with proper API data handling
     const renderProductCard = ({ item, index }) => {
-        // Check if it's static data or API data
-        const isStaticData = item && item.price && typeof item.price === 'string' && item.price.startsWith('₹');
-        
-        const productImage = item?.image;
-        const productName = item?.name || 'Product Name';
-        const currentPrice = isStaticData ? item.price : '₹1000';
-        const originalPrice = isStaticData ? item.originalPrice : '₹1100';
-        const productWeight = isStaticData ? item.weight : '500g';
+        const productImage = item?.image || item?.image_url || item?.product_image || item?.images?.[0];
+        const productName = item?.name || item?.product_name || 'Product Name';
+        const currentPrice = formatPrice(item?.price || item?.current_price || item?.selling_price || 0);
+        const originalPrice = formatPrice(item?.original_price || item?.mrp || item?.maximum_retail_price || item?.price || 0);
+        const productWeight = getProductWeight(item);
+
+        console.log('📦 Product Card Data:', {
+            productImage,
+            productName,
+            currentPrice,
+            originalPrice,
+            productWeight
+        });
 
         return (
             <View style={styles.productCardContainer}>
@@ -743,7 +767,9 @@ const SearchScreen = () => {
                         resizeMode='contain'
                         onError={(error) => {
                             console.log('❌ Product image load error:', error.nativeEvent.error);
+                            console.log('❌ Problematic image URL:', productImage);
                         }}
+                        onLoad={() => console.log('✅ Image loaded successfully:', productImage)}
                     />
                 </View>
 
@@ -760,7 +786,9 @@ const SearchScreen = () => {
                 {/* Price Section */}
                 <View style={styles.priceContainer}>
                     <Text style={styles.currentPrice}>{currentPrice}</Text>
-                    <Text style={styles.originalPrice}>{originalPrice}</Text>
+                    {originalPrice !== currentPrice && (
+                        <Text style={styles.originalPrice}>{originalPrice}</Text>
+                    )}
                 </View>
 
                 {/* Add Button */}
@@ -775,11 +803,7 @@ const SearchScreen = () => {
 
     const hasSearchResults = searchResults.length > 0;
     const showResults = !isTyping && !loader && searchText.trim() !== '';
-
-    // Create proper data structure for product cards
-    const productCardsDataFormatted = productCardsData.length > 0 
-        ? productCardsData 
-        : staticProductData;
+    const hasProductCards = productCardsData.length > 0;
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -839,86 +863,81 @@ const SearchScreen = () => {
                 )}
             </View>
 
-            {/* Main Content Area - UPDATED: Fixed loader visibility */}
+            {/* Main Content Area - UPDATED to prioritize skeleton */}
             {showProductSkeleton ? (
-                // Show product skeleton loader while API is fetching product details
                 <ProductSkeletonLoader />
             ) : isTyping ? (
-                // Show typing loader while user is typing - NOW VISIBLE!
                 <TypingLoader />
             ) : loader ? (
-                // Show simple loader when API is fetching search results
                 <SimpleLoader />
             ) : showProductCards ? (
-                // Show product cards with actual API data or static data
                 <View style={{ flex: 1, backgroundColor: BRAND.bg }}>
-                    <FlatList
-                        data={productCardsDataFormatted}
-                        style={{ flex: 1 }}
-                        contentContainerStyle={{
-                            gap: s(10),
-                            alignItems: 'center',
-                            paddingTop: s(20),
-                            paddingHorizontal: s(20),
-                            paddingBottom: s(20)
-                        }}
-                        keyExtractor={(item, index) => {
-                            const id = item?.id || index;
-                            return `product-card-${id}`;
-                        }}
-                        numColumns={2}
-                        renderItem={renderProductCard}
-                        showsVerticalScrollIndicator={false}
-                        key="product-cards-grid"
-                    />
+                    {hasProductCards ? (
+                        <FlatList
+                            data={productCardsData}
+                            style={{ flex: 1 }}
+                            contentContainerStyle={{
+                                gap: s(10),
+                                alignItems: 'center',
+                                paddingTop: s(20),
+                                paddingHorizontal: s(20),
+                                paddingBottom: s(20)
+                            }}
+                            keyExtractor={(item, index) => {
+                                const id = item?.id || index;
+                                return `product-card-${id}`;
+                            }}
+                            numColumns={2}
+                            renderItem={renderProductCard}
+                            showsVerticalScrollIndicator={false}
+                            ListEmptyComponent={EmptyStateComponent}
+                            key="product-cards-grid"
+                        />
+                    ) : (
+                        <EmptyStateComponent />
+                    )}
                 </View>
             ) : showResults ? (
-                // Show search suggestions from API
                 <View style={{ backgroundColor: colors.bg, flex: 1 }}>
-                    <FlatList
-                        data={searchResults}
-                        keyExtractor={(item, index) => {
-                            const id = item?.id || index;
-                            return `search-result-${id}`;
-                        }}
-                        renderItem={renderSearchItem}
-                        onEndReached={loadMoreProducts}
-                        onEndReachedThreshold={0.5}
-                        ListFooterComponent={() => (
-                            <>
-                                {loader && searchResults.length > 0 && (
-                                    <LoadingMoreComponent />
-                                )}
-                                {searchText.length > 0 && !loader && (
-                                    <TouchableOpacity
-                                        style={[styles.showAllContainer]}
-                                        onPress={handleShowAllResults}
-                                    >
-                                        <View style={[styles.iconBox, {
-                                            backgroundColor: colors.primary + '10'
-                                        }]}>
-                                            <SearchIcon width={s(20)} height={s(20)} stroke={colors.primary} />
-                                        </View>
-                                        <View style={[styles.showAllTextContainer]}>
-                                            <Text style={{ color: colors.gray[400] }}>Show all results for </Text>
-                                            <Text style={styles.searchQueryText}>{searchText}</Text>
-                                        </View>
-                                        <RightArrowICon width={s(15)} height={s(15)} stroke={colors.gray[400]} />
-                                    </TouchableOpacity>
-                                )}
-                            </>
-                        )}
-                        // ListEmptyComponent={() => (
-                        //     !loader && searchText.trim() !== '' ? (
-                        //         <View style={styles.noResultsContainer}>
-                        //             <Text style={[styles.noResultsText, { color: colors.gray[400] }]}>
-                        //                 No products found for "{searchText}"
-                        //             </Text>
-                        //         </View>
-                        //     ) : null
-                        // )}
-                        key="search-results-list"
-                    />
+                    {hasSearchResults ? (
+                        <FlatList
+                            data={searchResults}
+                            keyExtractor={(item, index) => {
+                                const id = item?.id || index;
+                                return `search-result-${id}`;
+                            }}
+                            renderItem={renderSearchItem}
+                            onEndReached={loadMoreProducts}
+                            onEndReachedThreshold={0.5}
+                            ListFooterComponent={() => (
+                                <>
+                                    {loader && searchResults.length > 0 && (
+                                        <LoadingMoreComponent />
+                                    )}
+                                    {searchText.length > 0 && !loader && (
+                                        <TouchableOpacity
+                                            style={[styles.showAllContainer]}
+                                            onPress={handleShowAllResults}
+                                        >
+                                            <View style={[styles.iconBox, {
+                                                backgroundColor: colors.primary + '10'
+                                            }]}>
+                                                <SearchIcon width={s(20)} height={s(20)} stroke={colors.primary} />
+                                            </View>
+                                            <View style={[styles.showAllTextContainer]}>
+                                                <Text style={{ color: colors.gray[400] }}>Show all results for </Text>
+                                                <Text style={styles.searchQueryText}>{searchText}</Text>
+                                            </View>
+                                            <RightArrowICon width={s(15)} height={s(15)} stroke={colors.gray[400]} />
+                                        </TouchableOpacity>
+                                    )}
+                                </>
+                            )}
+                            key="search-results-list"
+                        />
+                    ) : (
+                        <EmptyStateComponent />
+                    )}
                 </View>
             ) : null}
         </SafeAreaView>
@@ -1014,6 +1033,24 @@ const styles = StyleSheet.create({
     skeletonHeaderText: {
         marginLeft: s(10),
         fontSize: s(14),
+    },
+    // Empty State - UPDATED
+    emptyStateContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: s(40),
+    },
+    emptyStateText: {
+        fontSize: s(14),
+        textAlign: 'center',
+        marginBottom: s(20),
+    },
+    // Show All Button in Empty State
+    showAllButton: {
+        marginTop: s(20),
+        width: '80%',
+        alignSelf: 'center',
     },
     // Existing loader styles
     loaderContainer: {
@@ -1239,7 +1276,7 @@ const styles = StyleSheet.create({
     productImage: {
         width: "80%",
         height: "80%",
-        mixBlendMode:'multiply'
+        mixBlendMode: 'multiply'
     },
     productName: {
         fontSize: s(12),

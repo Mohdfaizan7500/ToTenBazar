@@ -1,1 +1,1 @@
-export const BASE_URL = 'http://toptenbazar.in:8000';
+export const BASE_URL = 'https://api.toptenbazar.in';

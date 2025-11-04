@@ -8,13 +8,25 @@ import { useSelector } from 'react-redux'
 import { BRAND, DARK } from '../../../src/constant/colors'
 
 const OrderDetails = () => {
+    const {
+        productDetails,
+        isLoadingProductDetails,
+        errorProductDetails
+    } = useSelector(state => state.user);
+    console.log("Product :", productDetails)
     const route = useRoute()
     const navigation = useNavigation()
     const Theme = useSelector(state => state.auth.Theme)
     const colors = Theme ? DARK : BRAND
 
     const { cartItems, totalInr, subtotalInr, discountInr, totalItems } = route.params || {}
+    if (isLoadingProductDetails) {
+        return <Text>Loading product details...</Text>;
+    }
 
+    if (errorProductDetails) {
+        return <Text>Error: {errorProductDetails}</Text>;
+    }
     const orderData = {
         id: 'ORD-12345',
         deliveryAddress: {
@@ -41,15 +53,15 @@ const OrderDetails = () => {
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
             <StatusBar backgroundColor={colors.bg} barStyle={Theme ? 'light-content' : 'dark-content'} />
             <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: colors.bg }}>
-                
+
                 {/* Item Details */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Item Details</Text>
                     {cartItems.map((item) => (
-                        <View key={item.id} style={[styles.item, { 
+                        <View key={item.id} style={[styles.item, {
                             backgroundColor: colors.white,
                             shadowColor: colors.black,
-                            shadowOpacity: Theme ? 0.05 : 0.1 
+                            shadowOpacity: Theme ? 0.05 : 0.1
                         }]}>
                             <View style={styles.itemLeft}>
                                 <Image source={{ uri: item.image }} style={styles.itemImage} />
@@ -89,7 +101,7 @@ const OrderDetails = () => {
                 {/* Offers & Coupons */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Offers & Coupons</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.offersCard, { backgroundColor: colors.white, borderColor: colors.border }]}
                         onPress={() => navigation.navigate('Offers')}
                     >
@@ -106,7 +118,7 @@ const OrderDetails = () => {
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Method</Text>
                     <View style={[styles.paymentCard, { backgroundColor: colors.white, borderColor: colors.border }]}>
                         <Text style={[styles.paymentMethod, { color: colors.text }]}>{orderData.paymentMethod}</Text>
-                        <PaymentCheckBoxIcon  />
+                        <PaymentCheckBoxIcon />
                     </View>
                 </View>
 
@@ -137,7 +149,7 @@ const OrderDetails = () => {
                 </View>
 
                 {/* Place Order Button */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.placeOrderButton, { backgroundColor: colors.primary }]}
                     onPress={() => navigation.replace('OrderConfirem')}
                 >
@@ -151,210 +163,210 @@ const OrderDetails = () => {
 export default OrderDetails
 
 const styles = StyleSheet.create({
-    emptyContainer: { 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        paddingHorizontal: s(10) 
-    },
-    emptyText: { 
-        fontSize: s(13), 
-        fontWeight: 'bold', 
-        marginBottom: vs(4) 
-    },
-    emptySubText: { 
-        fontSize: s(11), 
-        textAlign: 'center' 
-    },
-    section: { 
-        paddingHorizontal: s(10), 
-        paddingVertical: vs(4) 
-    },
-    sectionTitle: { 
-        fontSize: s(13), 
-        fontWeight: 'bold', 
-        marginBottom: vs(6) 
-    },
-    item: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
-        padding: s(10), 
-        marginBottom: vs(6), 
+        paddingHorizontal: s(10)
+    },
+    emptyText: {
+        fontSize: s(13),
+        fontWeight: 'bold',
+        marginBottom: vs(4)
+    },
+    emptySubText: {
+        fontSize: s(11),
+        textAlign: 'center'
+    },
+    section: {
+        paddingHorizontal: s(10),
+        paddingVertical: vs(4)
+    },
+    sectionTitle: {
+        fontSize: s(13),
+        fontWeight: 'bold',
+        marginBottom: vs(6)
+    },
+    item: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: s(10),
+        marginBottom: vs(6),
         borderRadius: s(8),
-        shadowOffset: { width: 0, height: 1 }, 
-        shadowRadius: 2, 
+        shadowOffset: { width: 0, height: 1 },
+        shadowRadius: 2,
         elevation: 1
     },
-    itemLeft: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        flex: 1 
+    itemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1
     },
-    itemImage: { 
-        width: s(50), 
-        height: s(50), 
-        borderRadius: s(6), 
-        marginRight: s(8) 
+    itemImage: {
+        width: s(50),
+        height: s(50),
+        borderRadius: s(6),
+        marginRight: s(8)
     },
-    itemInfo: { 
-        flex: 1 
+    itemInfo: {
+        flex: 1
     },
-    itemName: { 
-        fontSize: s(13), 
-        fontWeight: '600', 
-        marginBottom: vs(2) 
+    itemName: {
+        fontSize: s(13),
+        fontWeight: '600',
+        marginBottom: vs(2)
     },
-    itemQuantity: { 
-        fontSize: s(11) 
+    itemQuantity: {
+        fontSize: s(11)
     },
-    itemPrice: { 
-        fontSize: s(13), 
-        fontWeight: 'bold' 
+    itemPrice: {
+        fontSize: s(13),
+        fontWeight: 'bold'
     },
-    addressCard: { 
-        flexDirection: 'row', 
-        padding: s(8), 
-        borderRadius: s(8), 
-        borderWidth: 1 
+    addressCard: {
+        flexDirection: 'row',
+        padding: s(8),
+        borderRadius: s(8),
+        borderWidth: 1
     },
-    addressIconContainer: { 
-        width: s(32), 
-        height: s(32), 
-        borderRadius: s(8), 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        marginRight: s(8) 
+    addressIconContainer: {
+        width: s(32),
+        height: s(32),
+        borderRadius: s(8),
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: s(8)
     },
-    addressContent: { 
-        flex: 1 
+    addressContent: {
+        flex: 1
     },
-    addressHeader: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
-        alignItems: 'flex-start', 
-        marginBottom: vs(2) 
+    addressHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: vs(2)
     },
-    addressTextContent: { 
-        flex: 1 
+    addressTextContent: {
+        flex: 1
     },
-    addressTitle: { 
-        fontSize: s(12), 
-        fontWeight: 'bold', 
-        marginBottom: vs(1) 
+    addressTitle: {
+        fontSize: s(12),
+        fontWeight: 'bold',
+        marginBottom: vs(1)
     },
-    addressStatus: { 
-        fontSize: s(10), 
-        fontWeight: 'bold', 
-        marginBottom: vs(1) 
+    addressStatus: {
+        fontSize: s(10),
+        fontWeight: 'bold',
+        marginBottom: vs(1)
     },
-    addressOwner: { 
-        fontSize: s(10), 
-        fontWeight: 'bold', 
-        marginBottom: vs(1) 
+    addressOwner: {
+        fontSize: s(10),
+        fontWeight: 'bold',
+        marginBottom: vs(1)
     },
-    addressText: { 
-        fontSize: s(10), 
-        marginBottom: vs(1), 
-        lineHeight: vs(12) 
+    addressText: {
+        fontSize: s(10),
+        marginBottom: vs(1),
+        lineHeight: vs(12)
     },
-    changeButton: { 
-        padding: s(2) 
+    changeButton: {
+        padding: s(2)
     },
-    change: { 
-        fontSize: s(10), 
-        fontWeight: '500' 
+    change: {
+        fontSize: s(10),
+        fontWeight: '500'
     },
-    offersCard: { 
-        padding: s(8), 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        borderRadius: s(8), 
-        borderWidth: 1 
+    offersCard: {
+        padding: s(8),
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: s(8),
+        borderWidth: 1
     },
-    offersPlaceholder: { 
-        fontSize: s(12), 
-        fontWeight: '600', 
-        flex: 1, 
-        marginLeft: s(6) 
+    offersPlaceholder: {
+        fontSize: s(12),
+        fontWeight: '600',
+        flex: 1,
+        marginLeft: s(6)
     },
-    offersArrow: { 
-        width: s(20), 
-        height: s(20), 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        borderRadius: s(10) 
+    offersArrow: {
+        width: s(20),
+        height: s(20),
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: s(10)
     },
-    paymentCard: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        padding: s(8), 
-        borderRadius: s(8), 
-        borderWidth: 1 
+    paymentCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: s(8),
+        borderRadius: s(8),
+        borderWidth: 1
     },
-    paymentMethod: { 
-        fontSize: s(12), 
-        fontWeight: 'bold' 
+    paymentMethod: {
+        fontSize: s(12),
+        fontWeight: 'bold'
     },
-    summaryCard: { 
-        padding: s(8), 
-        borderRadius: s(8), 
-        borderWidth: 1 
+    summaryCard: {
+        padding: s(8),
+        borderRadius: s(8),
+        borderWidth: 1
     },
-    totalItems: { 
-        fontSize: s(12), 
-        fontWeight: 'bold', 
-        marginBottom: vs(4) 
+    totalItems: {
+        fontSize: s(12),
+        fontWeight: 'bold',
+        marginBottom: vs(4)
     },
-    divider: { 
-        height: 1, 
-        marginVertical: vs(4) 
+    divider: {
+        height: 1,
+        marginVertical: vs(4)
     },
-    summaryRow: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: vs(2) 
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: vs(2)
     },
-    summaryLabel: { 
-        fontSize: s(10) 
+    summaryLabel: {
+        fontSize: s(10)
     },
-    summaryValue: { 
-        fontSize: s(10), 
-        fontWeight: '600' 
+    summaryValue: {
+        fontSize: s(10),
+        fontWeight: '600'
     },
-    discountValue: { 
-        fontSize: s(10), 
-        fontWeight: '600' 
+    discountValue: {
+        fontSize: s(10),
+        fontWeight: '600'
     },
-    freeText: { 
-        fontSize: s(10), 
-        fontWeight: '600' 
+    freeText: {
+        fontSize: s(10),
+        fontWeight: '600'
     },
-    totalRow: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginTop: vs(4) 
+    totalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: vs(4)
     },
-    totalLabel: { 
-        fontSize: s(13), 
-        fontWeight: 'bold' 
+    totalLabel: {
+        fontSize: s(13),
+        fontWeight: 'bold'
     },
-    totalPrice: { 
-        fontSize: s(13), 
-        fontWeight: 'bold' 
+    totalPrice: {
+        fontSize: s(13),
+        fontWeight: 'bold'
     },
-    placeOrderButton: { 
-        margin: s(10), 
-        padding: s(10), 
-        borderRadius: s(8), 
-        alignItems: 'center' 
+    placeOrderButton: {
+        margin: s(10),
+        padding: s(10),
+        borderRadius: s(8),
+        alignItems: 'center'
     },
-    placeOrderText: { 
-        color: '#fff', 
-        fontSize: s(13), 
-        fontWeight: 'bold' 
+    placeOrderText: {
+        color: '#fff',
+        fontSize: s(13),
+        fontWeight: 'bold'
     },
 })

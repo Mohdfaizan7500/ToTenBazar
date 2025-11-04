@@ -170,12 +170,52 @@ export const fetchSubcategoryDetails = createAsyncThunk(
             return {
                 // category_id,
                 // subcategory_id,
+                category_id,        // Make sure these are included
+                subcategory_id,     // Make sure these are included  
                 data,
             };
         } catch (error) {
             return rejectWithValue(
                 error.message || "Failed to fetch subcategory details"
             );
+        }
+    }
+);
+
+export const fetchProductDetails = createAsyncThunk(
+    "prod/fetchProductDetails",
+    async (product_id, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const accessToken = state.auth?.accessToken || await AsyncStorage.getItem('accessToken');
+
+            const response = await fetch(
+                `${BASE_URL}/prod/get_product_details?product_id=${product_id}`,
+                {
+                    method: "GET",
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            console.log("Product details response status:", response.status);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || "Failed to fetch product details");
+            }
+
+            const data = await response.json();
+            console.log(`Product details for product_id ${product_id}:`, data);
+
+            return {
+                product_id,
+                data
+            };
+        } catch (error) {
+            return rejectWithValue(error.message || "Failed to fetch product details");
         }
     }
 );
@@ -386,8 +426,11 @@ const initialState = {
     categories: null,
     groupProducts: {},
     subcategories: {},
+    productDetails: {},
+    isLoadingProductDetails: false, // Add loading state for product details
     subcategoriesProduct: {},
     isLoadingsubcategoriesProduct: false,
+    errorProductDetails: null, // Add error state for product details
     errorsubcategoriesProduct: null,
     isLoading: false,
     error: null,
@@ -419,11 +462,43 @@ const userSlice = createSlice({
         },
         clearSubcategoriesProduct: (state, action) => {
             state.subcategoriesProduct = {}
-        }
+        },
+        clearProductDetails: (state, action) => {
+            const productId = action.payload;
+            if (productId) {
+                // Clear specific product details
+                delete state.productDetails[productId];
+            } else {
+                // Clear all product details
+                state.productDetails = {};
+            }
+        },
     },
     extraReducers: (builder) => {
         builder
-            // fetchSubcategoryDetails
+            // Add this case for fetchProductDetails
+            .addCase(fetchProductDetails.pending, (state) => {
+                state.isLoadingProductDetails = true;
+                state.errorProductDetails = null;
+            })
+            .addCase(fetchProductDetails.fulfilled, (state, action) => {
+                state.isLoadingProductDetails = false;
+                const { product_id, data } = action.payload;
+
+                // Store product details by product_id
+                state.productDetails[product_id] = data;
+            })
+            .addCase(fetchProductDetails.rejected, (state, action) => {
+                state.isLoadingProductDetails = false;
+                state.errorProductDetails = action.payload;
+            })
+
+            // REMOVED THE DUPLICATE: Delete this empty block:
+            // .addCase(fetchSubcategoryDetails.pending, (state) => {
+            //     // ... existing code
+            // })
+
+            // SINGLE fetchSubcategoryDetails implementation
             .addCase(fetchSubcategoryDetails.pending, (state) => {
                 state.isLoadingsubcategoriesProduct = true;
                 state.errorsubcategoriesProduct = null;
@@ -444,7 +519,7 @@ const userSlice = createSlice({
                 state.errorsubcategoriesProduct = action.payload;
             })
 
-            // Add this to your existing extraReducers builder
+            // Continue with the rest of your cases...
             .addCase(fetchSubcategories.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -460,6 +535,7 @@ const userSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
             })
+
             // Add cases for fetchProductsByGroup
             .addCase(fetchProductsByGroup.pending, (state) => {
                 state.isLoading = true;
@@ -600,7 +676,8 @@ export const {
     clearGroupProducts, clearGroupProductsByGroup,
     setSelectedAddress,
     clearSubcategories,
-    clearSubcategoriesProduct
+    clearSubcategoriesProduct,
+    clearProductDetails // Add this
 
 } = userSlice.actions;
 

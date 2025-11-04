@@ -1,14 +1,48 @@
 import { StatusBar, StyleSheet, Text, View, ScrollView, Dimensions, Animated, Image, TouchableOpacity } from 'react-native'
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { useRoute } from '@react-navigation/native'
+import { useRoute, useNavigation } from '@react-navigation/native'
 import BRAND from '../../../src/constant/color';
-import { s, vs } from 'react-native-size-matters';
-import { AddToCartIcon, MinusIcon, PlusIcon } from '../../../src/SVGicons/icon';
+import { s, vs, ms } from 'react-native-size-matters';
+import { AddToCartIcon, MinusIcon, PlusIcon, BackIcon } from '../../../src/SVGicons/icon';
+// Remove ShareIcon import if it doesn't exist
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProductDetails } from '../../../store/slices/userSlice';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Simple share icon component as fallback
+const ShareIcon = ({ width, height, color }) => (
+  <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
+    <View style={{
+      width: width * 0.7,
+      height: height * 0.7,
+      borderWidth: 1,
+      borderColor: color,
+      borderRadius: 2,
+      justifyContent: 'center',
+      alignItems: 'center'
+    }}>
+      <View style={{
+        width: width * 0.3,
+        height: height * 0.3,
+        backgroundColor: color,
+        borderRadius: 1,
+      }} />
+    </View>
+  </View>
+);
+
 const AboutProductScreen = () => {
     const route = useRoute();
+    const navigation = useNavigation();
+    const dispatch = useDispatch();
+
+    const {
+        productDetails,
+        isLoadingProductDetails,
+        errorProductDetails
+    } = useSelector(state => state.user);
+
     const [currentIndex, setCurrentIndex] = useState(0);
     const [quantity, setQuantity] = useState(1);
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
@@ -18,63 +52,60 @@ const AboutProductScreen = () => {
     const autoScrollTimerRef = useRef(null);
     const scrollEndTimerRef = useRef(null);
 
-    // Extract product data from route params
-    const productData = route.params?.item;
+    // Extract product ID from route params
+    const productId = route?.params?.item?.id;
+    console.log("productId:", productId);
 
-    // Memoize product data to prevent recreation
+    // Fetch product details
+    useEffect(() => {
+        if (productId) {
+            dispatch(fetchProductDetails(productId));
+        }
+    }, [dispatch, productId]);
+
+    // Get product details from API response
+    const apiProductData = productDetails[productId]?.product;
+
+    // Memoize product data to prevent recreation - using API data
     const product = useMemo(() => {
-        if (!productData) return null;
+        if (!apiProductData) return null;
+
+        // Divide prices by 100
+        const currentPrice = apiProductData.selling_price ? apiProductData.selling_price / 100 : 0;
+        const originalPrice = apiProductData.original_price ? apiProductData.original_price / 100 : 0;
 
         return {
-            id: productData.id,
-            name: productData.product_name,
-            category: productData.group_name_display,
-            currentPrice: productData.product_selling_price,
-            originalPrice: productData.product_original_price,
-            unit: productData.product_unit,
-            discountPercentage: productData.discount_percentage,
-            description: productData.description || `This is ${productData.product_name}, a premium product in the ${productData.group_name_display} category. Available at an amazing discounted price.`
+            id: apiProductData.id,
+            name: apiProductData.name,
+            category: apiProductData.category,
+            currentPrice: currentPrice,
+            originalPrice: originalPrice,
+            unit: apiProductData.unit,
+            discountPercentage: apiProductData.discount_percentage,
+            description: apiProductData.description || `This is ${apiProductData.name}, a premium product in the ${apiProductData.category} category. Available at an amazing discounted price.`,
+            stock: apiProductData.stock
         };
-    }, [productData]);
+    }, [apiProductData]);
 
-    // Memoize images array from product_image
+    // Memoize images array from API product data
     const images = useMemo(() => {
-        if (!productData?.product_image) return [];
+        if (!apiProductData?.image) return [];
 
-        return productData.product_image.map(img =>
-            typeof img === 'string' ? img : img.image_url || img.image
+        return apiProductData.image.map(img => 
+            img.image_url || img.image
         ).filter(Boolean);
-    }, [productData]);
-
-    // Single optimized useEffect for route params
-    useEffect(() => {
-        if (productData) {
-            console.log("Product data on about product screen:", productData);
-        }
-    }, [productData]);
+    }, [apiProductData]);
 
     // Cleanup all timers and animations when component unmounts
     useEffect(() => {
         return () => {
-            // Clear all timers
             if (autoScrollTimerRef.current) {
                 clearTimeout(autoScrollTimerRef.current);
-                autoScrollTimerRef.current = null;
             }
-            
             if (scrollEndTimerRef.current) {
                 clearTimeout(scrollEndTimerRef.current);
-                scrollEndTimerRef.current = null;
             }
-
-            // Stop any ongoing animations
             scrollX.stopAnimation();
-            
-            // Reset refs
-            scrollViewRef.current = null;
-            
-            // You can also reset states here if needed, but they'll be garbage collected
-            // when component unmounts. This is more for cleanup of active resources.
         };
     }, []);
 
@@ -98,10 +129,9 @@ const AboutProductScreen = () => {
         return () => {
             if (autoScrollTimerRef.current) {
                 clearTimeout(autoScrollTimerRef.current);
-                autoScrollTimerRef.current = null;
             }
         };
-    }, [currentIndex, isAutoScrollEnabled, images.length, scrollX]);
+    }, [currentIndex, isAutoScrollEnabled, images.length]);
 
     // Memoized scroll handler
     const onScroll = useMemo(() =>
@@ -121,24 +151,17 @@ const AboutProductScreen = () => {
     // Memoized event handlers
     const handleScrollBegin = useCallback(() => {
         setIsAutoScrollEnabled(false);
-        
-        // Clear any pending auto-scroll timer
         if (autoScrollTimerRef.current) {
             clearTimeout(autoScrollTimerRef.current);
-            autoScrollTimerRef.current = null;
         }
     }, []);
 
     const handleScrollEnd = useCallback(() => {
-        // Clear any existing timer
         if (scrollEndTimerRef.current) {
             clearTimeout(scrollEndTimerRef.current);
         }
-        
-        // Set new timer to resume auto-scroll
         scrollEndTimerRef.current = setTimeout(() => {
             setIsAutoScrollEnabled(true);
-            scrollEndTimerRef.current = null;
         }, 5000);
     }, []);
 
@@ -153,6 +176,12 @@ const AboutProductScreen = () => {
     const handleAddToCart = useCallback(() => {
         if (!product) return;
 
+        // Check stock availability
+        if (product.stock < quantity) {
+            alert(`Only ${product.stock} items available in stock!`);
+            return;
+        }
+
         const totalPrice = product.currentPrice * quantity;
         const cartItem = {
             product: product,
@@ -164,7 +193,29 @@ const AboutProductScreen = () => {
         alert(`Added ${quantity} ${product.unit} of ${product.name} to cart!`);
     }, [product, quantity]);
 
-    // Memoize pager dots to prevent recalculation on every render
+    // Navigation handlers
+    const handleBackPress = useCallback(() => {
+        navigation.goBack();
+    }, [navigation]);
+
+    const handleSharePress = useCallback(() => {
+        // Navigate to share screen or implement share functionality
+        console.log('Share product:', product);
+        alert('Share functionality to be implemented');
+    }, [product]);
+
+    // Calculate discount percentage if not provided
+    const calculatedDiscount = useMemo(() => {
+        if (product?.discountPercentage && product.discountPercentage > 0) {
+            return product.discountPercentage;
+        }
+        if (product?.originalPrice && product?.currentPrice && product.originalPrice > product.currentPrice) {
+            return Math.round(((product.originalPrice - product.currentPrice) / product.originalPrice) * 100);
+        }
+        return 0;
+    }, [product]);
+
+    // Memoize pager dots
     const pagerDots = useMemo(() =>
         images.map((_, index) => {
             const inputRange = [
@@ -175,7 +226,7 @@ const AboutProductScreen = () => {
 
             const dotWidth = scrollX.interpolate({
                 inputRange,
-                outputRange: [8, 20, 8],
+                outputRange: [s(8), s(20), s(8)],
                 extrapolate: 'clamp',
             });
 
@@ -216,16 +267,35 @@ const AboutProductScreen = () => {
         [images]
     );
 
-    // Format price with commas for better readability
+    // Format price with commas
     const formatPrice = (price) => {
-        return price?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || '0';
+        if (!price) return '0';
+        return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     };
 
-    // Show loading if no product data
+    // Show loading state
+    if (isLoadingProductDetails) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading product details...</Text>
+            </View>
+        );
+    }
+
+    // Show error state
+    if (errorProductDetails) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text style={styles.errorText}>Error: {errorProductDetails}</Text>
+            </View>
+        );
+    }
+
+    // Show loading if no product data from API
     if (!product) {
         return (
             <View style={styles.loadingContainer}>
-                <Text>Loading product...</Text>
+                <Text style={styles.loadingText}>Loading product...</Text>
             </View>
         );
     }
@@ -251,7 +321,16 @@ const AboutProductScreen = () => {
                             {carouselImages}
                         </ScrollView>
 
-                        {/* Pager Indicator - Only show if multiple images */}
+                        {/* Top Navigation Circles */}
+                        <View style={styles.topNavigationContainer}>
+                            <TouchableOpacity style={styles.navCircle} onPress={handleBackPress}>
+                                <BackIcon width={s(18)} height={s(18)} color={BRAND.white} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.navCircle} onPress={handleSharePress}>
+                                <ShareIcon width={s(18)} height={s(18)} color={BRAND.white} />
+                            </TouchableOpacity>
+                        </View>
+
                         {images.length > 1 && (
                             <View style={styles.pagerContainer}>
                                 {pagerDots}
@@ -260,39 +339,56 @@ const AboutProductScreen = () => {
                     </>
                 ) : (
                     <View style={styles.placeholderImage}>
-                        <Text>No Image Available</Text>
+                        <Text style={styles.placeholderText}>No Image Available</Text>
+                        {/* Top Navigation Circles for placeholder too */}
+                        <View style={styles.topNavigationContainer}>
+                            <TouchableOpacity style={styles.navCircle} onPress={handleBackPress}>
+                                <BackIcon width={s(18)} height={s(18)} color={BRAND.white} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.navCircle} onPress={handleSharePress}>
+                                <ShareIcon width={s(18)} height={s(18)} color={BRAND.white} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 )}
             </View>
 
             {/* Content below images */}
             <View style={styles.contentContainer}>
-                <View style={{ paddingHorizontal: s(20), gap: s(0) }}>
+                <View style={styles.contentHeader}>
                     <View style={styles.typeBg}>
                         <Text style={styles.type}>{product.category}</Text>
                     </View>
                     <Text style={styles.title}>{product.name}</Text>
 
-                    {/* Discount Badge */}
-                    {product.discountPercentage > 0 && (
+                    {/* Stock Information */}
+                    <View style={styles.stockContainer}>
+                        <Text style={styles.stockText}>
+                            {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                        </Text>
+                    </View>
+
+                    {calculatedDiscount > 0 && (
                         <View style={styles.discountBadge}>
                             <Text style={styles.discountText}>
-                                {product.discountPercentage}% OFF
+                                {calculatedDiscount}% OFF
                             </Text>
                         </View>
                     )}
 
                     <Text style={styles.price}>
                         ₹ {formatPrice(product.currentPrice)}
-                        <Text style={styles.originalPrice}>
-                            {' '}/ {product.unit}  ₹
-                            <Text style={styles.discountedPrice}> {formatPrice(product.originalPrice)}</Text>
-                        </Text>
+                        {product.originalPrice > product.currentPrice && (
+                            <Text style={styles.originalPrice}>
+                                {' '}/ {product.unit}  ₹
+                                <Text style={styles.discountedPrice}> {formatPrice(product.originalPrice)}</Text>
+                            </Text>
+                        )}
                     </Text>
                     <Text style={styles.descriptionText}>Description</Text>
                 </View>
                 <View style={styles.line} />
-                <View style={{ height: "45%" }}>
+                <View style={styles.descriptionWrapper}>
                     <ScrollView
                         contentContainerStyle={styles.descriptionContainer}
                         showsVerticalScrollIndicator={false}
@@ -309,22 +405,26 @@ const AboutProductScreen = () => {
                             onPress={handleDecreaseQuantity}
                             disabled={quantity === 1}
                         >
-                            <MinusIcon width={s(15)} height={s(15)} />
+                            <MinusIcon width={s(12)} height={s(12)} />
                         </TouchableOpacity>
                         <Text style={styles.itemText}>{quantity}</Text>
                         <TouchableOpacity
-                            style={styles.circle}
+                            style={[styles.circle, product.stock <= quantity && styles.disabledCircle]}
                             onPress={handleIncreaseQuantity}
+                            disabled={product.stock <= quantity}
                         >
-                            <PlusIcon width={s(15)} height={s(15)} />
+                            <PlusIcon width={s(12)} height={s(12)} />
                         </TouchableOpacity>
                     </View>
                     <TouchableOpacity
-                        style={styles.addTocartButton}
+                        style={[styles.addTocartButton, product.stock === 0 && styles.disabledButton]}
                         onPress={handleAddToCart}
+                        disabled={product.stock === 0}
                     >
-                        <AddToCartIcon width={s(22)} height={s(22)} />
-                        <Text style={styles.AddtocartText}>Add to Cart</Text>
+                        <AddToCartIcon width={s(18)} height={s(18)} />
+                        <Text style={styles.AddtocartText}>
+                            {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -345,6 +445,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: BRAND.bg
     },
+    loadingText: {
+        fontSize: s(14),
+        color: BRAND.text
+    },
+    errorText: {
+        fontSize: s(14),
+        color: BRAND.error
+    },
     imageContainer: {
         width: "100%",
         height: "53%",
@@ -364,65 +472,96 @@ const styles = StyleSheet.create({
         backgroundColor: BRAND.muted,
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
+    },
+    placeholderText: {
+        fontSize: s(14),
+        color: BRAND.text
+    },
+    // Top Navigation Circles
+    topNavigationContainer: {
+        position: 'absolute',
+        top: vs(40),
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: s(15),
+    },
+    navCircle: {
+        width: s(40),
+        height: s(40),
+        borderRadius: s(20),
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
     },
     pagerContainer: {
         position: 'absolute',
-        bottom: 120,
+        bottom: vs(100),
         flexDirection: 'row',
         alignSelf: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
+        paddingHorizontal: s(10),
+        paddingVertical: s(5),
     },
     pagerDot: {
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: 'white',
-        marginHorizontal: 4,
+        height: s(8),
+        borderRadius: s(4),
+        backgroundColor: BRAND.white,
+        marginHorizontal: s(4),
     },
     contentContainer: {
         position: "absolute",
         height: Dimensions.get('window').height / 1.6,
         width: "100%",
         bottom: 0,
-        paddingTop: s(10),
+        paddingTop: vs(10),
         backgroundColor: BRAND.white,
         elevation: 5,
         borderTopRightRadius: s(20),
         borderTopLeftRadius: s(20)
     },
+    contentHeader: {
+        paddingHorizontal: s(15),
+        gap: vs(5),
+    },
     title: {
-        fontSize: s(24),
+        fontSize: s(20),
         fontWeight: 'bold',
-        marginBottom: 10,
-        color: '#333',
-        marginTop: s(8)
+        color: BRAND.text,
+        marginTop: vs(5)
     },
     description: {
-        fontSize: s(14),
-        color: '#666',
-        lineHeight: vs(20),
+        fontSize: s(13),
+        color: BRAND.text,
+        lineHeight: vs(18),
     },
     type: {
         color: BRAND.primary,
-        fontSize: s(10),
+        fontSize: s(9),
         fontWeight: "800"
     },
     typeBg: {
         backgroundColor: '#dff8d8ff',
-        width: s(80),
+        width: s(70),
         justifyContent: "center",
         alignItems: "center",
-        borderRadius: s(20),
-        paddingVertical: s(4)
+        borderRadius: s(15),
+        paddingVertical: vs(3)
     },
     price: {
-        fontSize: s(28),
+        fontSize: s(24),
         fontWeight: "900",
         color: BRAND.primary,
-        lineHeight: vs(30)
+        lineHeight: vs(26)
     },
     originalPrice: {
-        fontSize: s(16),
+        fontSize: s(14),
         fontWeight: "400",
         color: BRAND.muted
     },
@@ -431,36 +570,39 @@ const styles = StyleSheet.create({
     },
     discountBadge: {
         backgroundColor: BRAND.orange,
-        paddingHorizontal: s(8),
-        paddingVertical: s(4),
-        borderRadius: s(4),
+        paddingHorizontal: s(6),
+        paddingVertical: vs(2),
+        borderRadius: s(3),
         alignSelf: 'flex-start',
-        marginTop: s(5),
     },
     discountText: {
         color: BRAND.white,
-        fontSize: s(12),
+        fontSize: s(10),
         fontWeight: 'bold',
     },
     descriptionText: {
-        fontSize: s(16),
+        fontSize: s(14),
         color: BRAND.orange,
         fontWeight: "500",
-        paddingVertical: s(8)
+        paddingVertical: vs(6)
     },
     line: {
         width: '100%',
         borderBottomWidth: s(0.5),
-        borderColor: BRAND.muted
+        borderColor: BRAND.muted,
+        marginVertical: vs(8),
+    },
+    descriptionWrapper: {
+        height: "45%",
     },
     descriptionContainer: {
-        paddingVertical: s(20),
-        paddingHorizontal: s(20)
+        paddingVertical: vs(15),
+        paddingHorizontal: s(15)
     },
     ButtonContainer: {
         width: "100%",
         backgroundColor: BRAND.white,
-        height: vs(100),
+        height: vs(80),
         position: "absolute",
         elevation: 15,
         bottom: 0,
@@ -472,20 +614,23 @@ const styles = StyleSheet.create({
     quantityContainer: {
         flexDirection: "row",
         alignItems: "center",
-        gap: s(15)
+        gap: s(12)
     },
     addTocartButton: {
         backgroundColor: BRAND.primary,
         flexDirection: "row",
-        gap: s(10),
+        gap: s(8),
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: s(15),
-        paddingVertical: s(10),
-        borderRadius: s(12)
+        paddingHorizontal: s(12),
+        paddingVertical: vs(8),
+        borderRadius: s(10)
+    },
+    disabledButton: {
+        backgroundColor: BRAND.muted,
     },
     AddtocartText: {
-        fontSize: s(18),
+        fontSize: s(16),
         color: BRAND.white,
         fontWeight: '500'
     },
@@ -494,16 +639,24 @@ const styles = StyleSheet.create({
         borderColor: BRAND.muted,
         alignItems: "center",
         justifyContent: "center",
-        width: s(40),
-        height: s(40),
-        borderRadius: s(50)
+        width: s(35),
+        height: s(35),
+        borderRadius: s(18)
     },
     disabledCircle: {
         opacity: 0.5,
     },
     itemText: {
-        fontSize: s(35),
+        fontSize: s(28),
         fontWeight: "600",
         color: BRAND.text
+    },
+    stockContainer: {
+        marginBottom: vs(2),
+    },
+    stockText: {
+        fontSize: s(11),
+        color: BRAND.primary,
+        fontWeight: '500',
     }
 });
