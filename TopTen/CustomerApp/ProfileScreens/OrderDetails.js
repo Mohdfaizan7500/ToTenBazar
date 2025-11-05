@@ -4,41 +4,33 @@ import { useNavigation, useRoute } from '@react-navigation/native'
 import { s, vs } from 'react-native-size-matters'
 import { AddressIcon, OfferIcon, PaymentCheckBoxIcon, RightArrowICon } from '../../../src/SVGicons/icon'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useSelector } from 'react-redux'
+import { shallowEqual, useSelector } from 'react-redux'
 import { BRAND, DARK } from '../../../src/constant/colors'
 
 const OrderDetails = () => {
-    const {
-        productDetails,
-        isLoadingProductDetails,
-        errorProductDetails
-    } = useSelector(state => state.user);
-    console.log("Product :", productDetails)
+
     const route = useRoute()
     const navigation = useNavigation()
+    const selectedAddress = useSelector(state => state?.user?.selectedAddress, shallowEqual);
+    console.log('selectedAddress:', selectedAddress)
+
     const Theme = useSelector(state => state.auth.Theme)
     const colors = Theme ? DARK : BRAND
 
-    const { cartItems, totalInr, subtotalInr, discountInr, totalItems } = route.params || {}
-    if (isLoadingProductDetails) {
-        return <Text>Loading product details...</Text>;
+    const { cartItems, totalInr, subtotalInr, discountInr, totalItems, orderData } = route.params || {}
+    console.log('route params:', route.params)
+
+    // Function to format amount (divide by 100 and remove decimals)
+    const formatAmount = (amount) => {
+        if (!amount) return 0;
+        const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+        return Math.floor(numericAmount / 100);
     }
 
-    if (errorProductDetails) {
-        return <Text>Error: {errorProductDetails}</Text>;
-    }
-    const orderData = {
-        id: 'ORD-12345',
-        deliveryAddress: {
-            title: 'Delhi Kirti Nagar',
-            status: 'OK',
-            owner: 'Owner',
-            address: '1234, Block A, Near Central Park, Connaught Place, New Delhi - 110001, India',
-            location: 'Corresponding Files: New Delhi - NIGO!',
-            index: 'Index'
-        },
-        paymentMethod: 'Pay On Delivery',
-    }
+    // Format all amounts
+    const formattedSubtotal = subtotalInr;
+    const formattedDiscount =discountInr;
+    const formattedTotal = totalInr;
 
     if (!cartItems?.length) {
         return (
@@ -57,22 +49,28 @@ const OrderDetails = () => {
                 {/* Item Details */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Item Details</Text>
-                    {cartItems.map((item) => (
-                        <View key={item.id} style={[styles.item, {
-                            backgroundColor: colors.white,
-                            shadowColor: colors.black,
-                            shadowOpacity: Theme ? 0.05 : 0.1
-                        }]}>
-                            <View style={styles.itemLeft}>
-                                <Image source={{ uri: item.image }} style={styles.itemImage} />
-                                <View style={styles.itemInfo}>
-                                    <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
-                                    <Text style={[styles.itemQuantity, { color: colors.muted }]}>Qty: {item.quantity}</Text>
+                    {cartItems.map((item) => {
+                        const itemTotalPrice = formatAmount(item.price * item.quantity);
+                        const itemUnitPrice = formatAmount(item.price);
+                        
+                        return (
+                            <View key={item.id} style={[styles.item, {
+                                backgroundColor: colors.white,
+                                shadowColor: colors.black,
+                                shadowOpacity: Theme ? 0.05 : 0.1
+                            }]}>
+                                <View style={styles.itemLeft}>
+                                    <Image source={{ uri: item.image }} style={styles.itemImage} />
+                                    <View style={styles.itemInfo}>
+                                        <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
+                                        <Text style={[styles.itemQuantity, { color: colors.muted }]}>Qty: {item.quantity}</Text>
+                                        <Text style={[styles.unitPrice, { color: colors.muted }]}>₹{itemUnitPrice} per item</Text>
+                                    </View>
                                 </View>
+                                <Text style={[styles.itemPrice, { color: colors.orange }]}>₹{itemTotalPrice}</Text>
                             </View>
-                            <Text style={[styles.itemPrice, { color: colors.orange }]}>₹{item.price * item.quantity}</Text>
-                        </View>
-                    ))}
+                        )
+                    })}
                 </View>
 
                 {/* Delivery Address */}
@@ -85,15 +83,27 @@ const OrderDetails = () => {
                         <View style={styles.addressContent}>
                             <View style={styles.addressHeader}>
                                 <View style={styles.addressTextContent}>
-                                    <Text style={[styles.addressTitle, { color: colors.text }]}>{orderData.deliveryAddress.title}</Text>
-                                    <Text style={[styles.addressStatus, { color: colors.green }]}>{orderData.deliveryAddress.status}</Text>
-                                    <Text style={[styles.addressOwner, { color: colors.text }]}>{orderData.deliveryAddress.owner}</Text>
+                                    <Text style={[styles.addressTitle, { color: colors.text }]}>
+                                        {selectedAddress?.add_name || 'Delivery Address'}
+                                    </Text>
+                                    <Text style={[styles.addressStatus, { color: colors.green }]}>ACTIVE</Text>
+                                    <Text style={[styles.addressOwner, { color: colors.text }]}>
+                                        {selectedAddress?.user_name || 'Customer'}
+                                    </Text>
                                 </View>
-                                <TouchableOpacity style={styles.changeButton}>
+                                <TouchableOpacity 
+                                    style={styles.changeButton} 
+                                    onPress={() => navigation.navigate('Address')}
+                                >
                                     <Text style={[styles.change, { color: colors.orange }]}>Change</Text>
                                 </TouchableOpacity>
                             </View>
-                            <Text style={[styles.addressText, { color: colors.muted }]}>{orderData.deliveryAddress.address}</Text>
+                            <Text style={[styles.addressText, { color: colors.muted }]}>
+                                {selectedAddress ? 
+                                    `${selectedAddress.address}, ${selectedAddress.landmark}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}, ${selectedAddress.country}`
+                                    : 'No address selected. Please select a delivery address.'
+                                }
+                            </Text>
                         </View>
                     </View>
                 </View>
@@ -103,7 +113,7 @@ const OrderDetails = () => {
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Offers & Coupons</Text>
                     <TouchableOpacity
                         style={[styles.offersCard, { backgroundColor: colors.white, borderColor: colors.border }]}
-                        onPress={() => navigation.navigate('Offers')}
+                        onPress={() => navigation.navigate('Offers', { amount: formattedTotal })}
                     >
                         <OfferIcon width={s(20)} height={s(20)} stroke={colors.orange} />
                         <Text style={[styles.offersPlaceholder, { color: colors.text }]}>Offers & Coupons</Text>
@@ -117,7 +127,7 @@ const OrderDetails = () => {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Method</Text>
                     <View style={[styles.paymentCard, { backgroundColor: colors.white, borderColor: colors.border }]}>
-                        <Text style={[styles.paymentMethod, { color: colors.text }]}>{orderData.paymentMethod}</Text>
+                        <Text style={[styles.paymentMethod, { color: colors.text }]}>Pay On Delivery</Text>
                         <PaymentCheckBoxIcon />
                     </View>
                 </View>
@@ -130,11 +140,11 @@ const OrderDetails = () => {
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: colors.muted }]}>Subtotal</Text>
-                            <Text style={[styles.summaryValue, { color: colors.text }]}>₹{subtotalInr}</Text>
+                            <Text style={[styles.summaryValue, { color: colors.text }]}>₹{formattedSubtotal}</Text>
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: colors.muted }]}>Discount</Text>
-                            <Text style={[styles.discountValue, { color: colors.orange }]}>-₹{discountInr}</Text>
+                            <Text style={[styles.discountValue, { color: colors.orange }]}>-₹{formattedDiscount}</Text>
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: colors.muted }]}>Delivery Fee</Text>
@@ -143,17 +153,33 @@ const OrderDetails = () => {
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
                         <View style={styles.totalRow}>
                             <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
-                            <Text style={[styles.totalPrice, { color: colors.text }]}>₹{totalInr}</Text>
+                            <Text style={[styles.totalPrice, { color: colors.text }]}>₹{formattedTotal}</Text>
                         </View>
                     </View>
                 </View>
 
+                {/* Order ID Display */}
+                {orderData?.order_id && (
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Order Information</Text>
+                        <View style={[styles.orderInfoCard, { backgroundColor: colors.white, borderColor: colors.border }]}>
+                            <Text style={[styles.orderId, { color: colors.text }]}>Order ID: {orderData.order_id}</Text>
+                            <Text style={[styles.orderStatus, { color: colors.orange }]}>Status: {orderData.status}</Text>
+                        </View>
+                    </View>
+                )}
+
                 {/* Place Order Button */}
                 <TouchableOpacity
-                    style={[styles.placeOrderButton, { backgroundColor: colors.primary }]}
+                    style={[styles.placeOrderButton, { 
+                        backgroundColor: selectedAddress ? colors.primary : colors.muted,
+                    }]}
                     onPress={() => navigation.replace('OrderConfirem')}
+                    disabled={!selectedAddress}
                 >
-                    <Text style={styles.placeOrderText}>Place Order</Text>
+                    <Text style={styles.placeOrderText}>
+                        {selectedAddress ? 'Place Order' : 'Select Address First'}
+                    </Text>
                 </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
@@ -219,6 +245,10 @@ const styles = StyleSheet.create({
     },
     itemQuantity: {
         fontSize: s(11)
+    },
+    unitPrice: {
+        fontSize: s(10),
+        fontStyle: 'italic'
     },
     itemPrice: {
         fontSize: s(13),
@@ -357,6 +387,20 @@ const styles = StyleSheet.create({
     totalPrice: {
         fontSize: s(13),
         fontWeight: 'bold'
+    },
+    orderInfoCard: {
+        padding: s(8),
+        borderRadius: s(8),
+        borderWidth: 1
+    },
+    orderId: {
+        fontSize: s(11),
+        fontWeight: '600',
+        marginBottom: vs(2)
+    },
+    orderStatus: {
+        fontSize: s(11),
+        fontWeight: '600'
     },
     placeOrderButton: {
         margin: s(10),

@@ -1,11 +1,12 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native'
-import React, { useState, useCallback, useMemo, memo } from 'react'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert, RefreshControl } from 'react-native'
+import React, { useState, useCallback, useMemo, memo, useEffect } from 'react'
 import { s, vs, ms } from 'react-native-size-matters'
 import { BRAND, DARK } from '../../src/constant/colors'
-import { CheckIcon, CheckIcon2, DeleteIcon, MinusIcon, PlusIcon } from '../../src/SVGicons/icon'
+import { DeleteIcon, MinusIcon, PlusIcon } from '../../src/SVGicons/icon'
 import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+import { GetKartInfo, addToCart } from '../../store/slices/userSlice'
 
 // Skeleton Loader Component with Wave Effect
 const SkeletonLoader = memo(({ colors }) => {
@@ -13,7 +14,6 @@ const SkeletonLoader = memo(({ colors }) => {
     <View style={[styles.skeletonContainer, { backgroundColor: colors.bg }]}>
       {[1, 2, 3, 4].map((item) => (
         <View key={item} style={[styles.skeletonItem, { backgroundColor: colors.gray[100], borderColor: colors.border }]}>
-          <View style={[styles.skeletonCheckbox, { backgroundColor: colors.gray[300] }]} />
           <View style={[styles.skeletonImage, { backgroundColor: colors.gray[300] }]} />
           <View style={styles.skeletonContent}>
             <View style={[styles.skeletonText, { backgroundColor: colors.gray[300] }]} />
@@ -44,92 +44,124 @@ const CartItem = memo(({
   item,
   onIncrease,
   onDecrease,
-  onToggle,
   onRemove,
   colors
 }) => {
-  const usdToInr = useCallback((usd) => usd * 83, [])
+  // Format price - divide by 100 if it's in paise
+  const formatPrice = useCallback((price) => {
+    if (!price) return 0;
+    const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+    // If price seems too high (like 1802400), assume it's in paise and convert to rupees
+    return numericPrice > 1000 ? numericPrice / 100 : numericPrice;
+  }, [])
+
+  // State to track image loading
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Handle image load success
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
+
+  // Handle image load error
+  const handleImageError = useCallback(() => {
+    setImageLoaded(false);
+  }, []);
+
+  // Get image source - always show default first, then actual image when loaded
+  const imageSource = useMemo(() => {
+    const imageUri = item.image || item.product_image;
+
+    if (!imageUri) {
+      return require('../../src/images/default.jpg');
+    }
+
+    return { uri: imageUri };
+  }, [item.image, item.product_image]);
 
   return (
     <View style={[
       styles.cartItem,
-      { backgroundColor: colors.gray[100], borderColor: colors.border },
-      !item.selected && [styles.unselectedItem, { backgroundColor: colors.gray[200] }]
+      { backgroundColor: colors.gray[100], borderColor: colors.border }
     ]}>
-      <TouchableOpacity
-        style={[
-          styles.checkBox,
-          { borderColor: colors.muted, backgroundColor: colors.white },
-          item.selected && [styles.checkedBox, { backgroundColor: colors.orange, borderColor: colors.orange }]
-        ]}
-        onPress={() => onToggle(item.id)}
-      >
-        {item.selected && <CheckIcon2 width={s(10)} height={s(10)} color={colors.white} />}
-      </TouchableOpacity>
-
       <View style={[styles.imageContainer, { backgroundColor: colors.white, borderColor: colors.border }]}>
+        {/* Default image as fallback */}
         <Image
-          source={{ uri: item.image }}
-          style={styles.productImage}
+          source={require('../../src/images/default.jpg')}
+          style={styles.defaultImage}
           resizeMode='contain'
         />
+
+        {/* Actual product image */}
+        {(item.image || item.product_image) && (
+          <Image
+            source={imageSource}
+            style={[
+              styles.productImage,
+              imageLoaded ? styles.imageLoaded : styles.imageLoading
+            ]}
+            resizeMode='contain'
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        )}
       </View>
 
       <View style={styles.itemInfo}>
         <Text style={[
           styles.itemName,
-          { color: colors.text },
-          !item.selected && [styles.unselectedText, { color: colors.muted }]
+          { color: colors.text }
         ]} numberOfLines={2}>
-          {item.name}
+          {item.name || item.product_name || 'Product Name'}
         </Text>
+
         <Text style={[
           styles.itemPrice,
-          { color: colors.primary },
-          !item.selected && [styles.unselectedText, { color: colors.muted }]
+          { color: colors.primary }
         ]}>
-          ₹{usdToInr(item.price).toFixed(0)}
+          ₹{formatPrice(item.price || item.unit_price).toFixed(0)}
         </Text>
+
+        {item.quantity && (
+          <Text style={[styles.itemQuantity, { color: colors.muted }]}>
+            Quantity: {item.quantity}
+          </Text>
+        )}
 
         <View style={styles.controlsContainer}>
           <View style={styles.quantityControls}>
             <TouchableOpacity
               style={[
-                styles.circle, 
-                { borderColor: colors.muted },
-                !item.selected && [styles.disabledCircle, { borderColor: colors.gray[400] }]
+                styles.circle,
+                { borderColor: colors.muted }
               ]}
               onPress={() => onDecrease(item.id)}
-              disabled={!item.selected}
             >
               <MinusIcon
                 width={s(8)}
                 height={s(8)}
-                stroke={!item.selected ? colors.gray[900] : colors.muted}
+                stroke={colors.muted}
               />
             </TouchableOpacity>
 
             <Text style={[
               styles.quantityText,
-              { color: colors.text },
-              !item.selected && [styles.unselectedText, { color: colors.muted }]
+              { color: colors.text }
             ]}>
-              {item.quantity}
+              {item.quantity || 1}
             </Text>
 
             <TouchableOpacity
               style={[
-                styles.circle, 
-                { borderColor: colors.muted },
-                !item.selected && [styles.disabledCircle, { borderColor: colors.gray[100] }]
+                styles.circle,
+                { borderColor: colors.muted }
               ]}
               onPress={() => onIncrease(item.id)}
-              disabled={!item.selected}
             >
               <PlusIcon
                 width={s(8)}
                 height={s(8)}
-                stroke={!item.selected ? colors.gray[100] : colors.muted}
+                stroke={colors.muted}
               />
             </TouchableOpacity>
           </View>
@@ -145,75 +177,153 @@ const CartItem = memo(({
     </View>
   )
 })
-
 const MyOrder = () => {
   const navigation = useNavigation()
   const Theme = useSelector(state => state?.auth?.Theme)
+  const dispatch = useDispatch()
+
+  // Get cart data from Redux store
+  const { KartInfo, isKartInfoLoading, kartInfoError } = useSelector(state => state.user)
+  console.log("kartInfo:", KartInfo)
 
   const Color = Theme ? DARK : BRAND;
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: 'Hybrid Tomato (Tamatan)',
-      price: 45,
-      quantity: 1,
-      image: 'https://digital.loblaws.ca/PCX/20026703001_KG/en/1/20026703001_en_front_250.png',
-      description: 'Fresh organic hybrid tomatoes',
-      selected: true
-    },
-    {
-      id: 2,
-      name: 'Organic Carrot',
-      price: 35,
-      quantity: 2,
-      image: 'https://www.trustbasket.com/cdn/shop/articles/Carrot.jpg?v=1688378789',
-      description: 'Fresh organic carrots',
-      selected: true
-    },
-    {
-      id: 3,
-      name: 'Fresh Broccoli',
-      price: 60,
-      quantity: 1,
-      image: 'https://www.freshpoint.com/wp-content/uploads/2020/05/Freshpoint-Broccoli.jpg',
-      description: 'Green fresh broccoli',
-      selected: true
-    },
-    {
-      id: 4,
-      name: 'Organic Spinach',
-      price: 30,
-      quantity: 3,
-      image: 'https://cdnprod.mafretailproxy.com/sys-master-root/h3c/h01/27195138703390/410456_1.jpg_480Wx480H',
-      description: 'Fresh organic spinach leaves',
-      selected: true
+  const [refreshing, setRefreshing] = useState(false)
+  const [localCartItems, setLocalCartItems] = useState([])
+
+  // Fetch cart data on component mount
+  useEffect(() => {
+    dispatch(GetKartInfo())
+  }, [dispatch])
+
+  // Update local cart items when KartInfo changes
+  useEffect(() => {
+    if (KartInfo?.items) {
+      setLocalCartItems(KartInfo.items)
     }
-  ])
+  }, [KartInfo])
+
+  // Refresh cart data
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    dispatch(GetKartInfo()).finally(() => setRefreshing(false))
+  }, [dispatch])
+
+  // Transform API data to cart items format based on your actual API response
+  const cartItems = useMemo(() => {
+    if (!localCartItems || !Array.isArray(localCartItems)) {
+      console.log("No cart items found in localCartItems:", localCartItems)
+      return []
+    }
+
+    console.log("Processing cart items:", localCartItems)
+
+    return localCartItems.map(item => {
+      return {
+        id: item.id || `item-${Math.random()}`,
+        product_id: item.product?.id || item.product, // Extract product ID for payload
+        name: item.product?.name || item.product_name || 'Unknown Product',
+        price: item.unit_price || item.price || 0,
+        quantity: item.quantity || 1,
+        image: item.product?.image || item.product_image || null,
+        description: item.product?.description || ''
+      }
+    })
+  }, [localCartItems])
+
   const [isLoading, setIsLoading] = useState(false)
 
-  // Memoized USD to INR conversion
-  const usdToInr = useCallback((usd) => usd * 83, [])
+  // Common function to update cart via API
+  const updateCartViaAPI = useCallback((updatedItems) => {
+    const payload = {
+      order_id: KartInfo.order_id,
+      items: updatedItems.map(item => ({
+        product: item.product?.id || item.product,
+        quantity: item.quantity
+      }))
+    };
 
-  // Memoized cart operations
+    console.log('Cart update payload:', payload);
+
+    return dispatch(addToCart(payload))
+      .then(() => {
+        // Refresh cart data to ensure sync with server
+        dispatch(GetKartInfo());
+      })
+      .catch((error) => {
+        console.error('Error updating cart:', error);
+        // Revert local state if API call fails
+        dispatch(GetKartInfo());
+        throw error;
+      });
+  }, [dispatch, KartInfo]);
+
+  // Memoized cart operations - all using the same API
   const increaseQuantity = useCallback((id) => {
-    setCartItems(prev => prev.map(item =>
-      item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-    ))
-  }, [])
+    const updatedLocalItems = localCartItems.map(item =>
+      item.id === id
+        ? { ...item, quantity: (item.quantity || 1) + 1 }
+        : item
+    );
+
+    // Update local state immediately for better UX
+    setLocalCartItems(updatedLocalItems);
+
+    // Update via API
+    updateCartViaAPI(updatedLocalItems)
+      .catch(() => {
+        // Error handling is done in updateCartViaAPI
+      });
+  }, [dispatch, localCartItems, updateCartViaAPI])
 
   const decreaseQuantity = useCallback((id) => {
-    setCartItems(prev => prev.map(item =>
-      item.id === id && item.quantity > 1 ? { ...item, quantity: item.quantity - 1 } : item
-    ))
-  }, [])
+    const itemToUpdate = localCartItems.find(item => item.id === id);
+    if (!itemToUpdate) return;
 
-  const toggleCheckbox = useCallback((id) => {
-    setCartItems(prev => prev.map(item =>
-      item.id === id ? { ...item, selected: !item.selected } : item
-    ))
-  }, [])
+    let updatedLocalItems;
 
-  const removeItem = useCallback((id) => {
+    if ((itemToUpdate.quantity || 1) > 1) {
+      // Decrease quantity
+      updatedLocalItems = localCartItems.map(item =>
+        item.id === id
+          ? { ...item, quantity: (item.quantity || 1) - 1 }
+          : item
+      );
+    } else {
+      // Remove item if quantity becomes 0
+      Alert.alert(
+        'Remove Item',
+        'Do you want to remove this item from your cart?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: () => {
+              const itemsAfterRemoval = localCartItems.filter(item => item.id !== id);
+              setLocalCartItems(itemsAfterRemoval);
+              updateCartViaAPI(itemsAfterRemoval);
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    // Update local state immediately for better UX
+    setLocalCartItems(updatedLocalItems);
+
+    // Update via API
+    updateCartViaAPI(updatedLocalItems)
+      .catch(() => {
+        // Error handling is done in updateCartViaAPI
+      });
+  }, [dispatch, localCartItems, updateCartViaAPI])
+
+  // Remove item function using the same API
+  const removeItem = useCallback((itemIdToRemove) => {
     Alert.alert(
       'Remove Item',
       'Are you sure you want to remove this item from your cart?',
@@ -226,63 +336,112 @@ const MyOrder = () => {
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            setCartItems(prev => prev.filter(item => item.id !== id))
+            // Update local state immediately for better UX
+            const updatedLocalItems = localCartItems.filter(item => item.id !== itemIdToRemove);
+            setLocalCartItems(updatedLocalItems);
+
+            // Update via API
+            updateCartViaAPI(updatedLocalItems)
+              .catch(() => {
+                // Error handling is done in updateCartViaAPI
+              });
           }
         }
       ]
     )
-  }, [])
+  }, [localCartItems, updateCartViaAPI])
 
-  // Memoized calculations
-  const { selectedItems, totalItems, subtotalInr, discountInr, totalInr } = useMemo(() => {
-    const selected = cartItems.filter(item => item.selected)
-    const totalItemsCount = selected.reduce((sum, item) => sum + item.quantity, 0)
-    const subtotal = selected.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-    const discount = 4.5
-    const deliveryFee = selected.length > 0 ? 0 : 0
-    const total = subtotal - discount + deliveryFee
+  // Memoized calculations - convert paise to rupees
+  const { totalItems, subtotalInr, discountInr, totalInr, deliveryFee } = useMemo(() => {
+    const totalItemsCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0)
+
+    // Calculate subtotal - convert from paise to rupees if needed
+    const subtotalPaise = cartItems.reduce((sum, item) => {
+      const price = item.price || 0
+      const quantity = item.quantity || 1
+      return sum + (price * quantity)
+    }, 0)
+
+    // Convert to rupees (divide by 100 if it's in paise)
+    const subtotal = subtotalPaise > 1000 ? subtotalPaise / 100 : subtotalPaise
+
+    // Use API values or defaults
+    const discount = KartInfo?.discount_amount || 0
+    const deliveryFee = KartInfo?.delivery_charge || 0
+
+    // Convert total amount from API if available, otherwise calculate
+    let total = 0
+    if (KartInfo?.total_amount) {
+      total = KartInfo.total_amount > 1000 ? KartInfo.total_amount / 100 : KartInfo.total_amount
+    } else {
+      total = Math.max(0, subtotal - discount + deliveryFee)
+    }
 
     return {
-      selectedItems: selected,
       totalItems: totalItemsCount,
-      subtotalInr: usdToInr(subtotal),
-      discountInr: usdToInr(discount),
-      totalInr: usdToInr(total)
+      subtotalInr: subtotal,
+      discountInr: discount,
+      deliveryFee: deliveryFee,
+      totalInr: total
     }
-  }, [cartItems, usdToInr])
+  }, [cartItems, KartInfo])
 
   // Memoized order handler
   const handleOrderNow = useCallback(() => {
-    if (selectedItems.length === 0) {
-      Alert.alert('No Items Selected', 'Please select at least one item to order.')
+    if (cartItems.length === 0) {
+      Alert.alert('Cart Empty', 'Please add items to your cart before ordering.')
       return
     }
 
     setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      navigation.navigate('OrderDetails', {
-        cartItems: selectedItems,
-        totalInr: totalInr.toFixed(0),
-        subtotalInr: subtotalInr.toFixed(0),
-        discountInr: discountInr.toFixed(0),
-        totalItems: totalItems
-      })
-      setIsLoading(false)
-    }, 500)
-  }, [selectedItems, totalInr, subtotalInr, discountInr, totalItems, navigation])
+
+    // Navigate to order details with dynamic data
+    navigation.navigate('OrderDetails', {
+      cartItems: cartItems,
+      totalInr: totalInr.toFixed(0),
+      subtotalInr: subtotalInr.toFixed(0),
+      discountInr: discountInr.toFixed(0),
+      deliveryFee: deliveryFee.toFixed(0),
+      totalItems: totalItems,
+      orderId: KartInfo?.order_id // Pass the order ID if available
+    })
+
+    setIsLoading(false)
+  }, [cartItems, totalInr, subtotalInr, discountInr, deliveryFee, totalItems, navigation, KartInfo])
 
   // Show skeleton loader during loading state
-  if (isLoading) {
+  if (isKartInfoLoading && localCartItems.length === 0) {
     return <SkeletonLoader colors={Color} />
   }
 
+  // Show error state
+  if (kartInfoError) {
+    return (
+      <View style={[styles.emptyContainer, { backgroundColor: Color.bg }]}>
+        <Text style={[styles.emptyText, { color: Color.error }]}>Error Loading Cart</Text>
+        <Text style={[styles.emptySubText, { color: Color.muted }]}>{kartInfoError}</Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: Color.primary }]}
+          onPress={onRefresh}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   // Empty cart state
-  if (cartItems.length === 0) {
+  if (!cartItems || cartItems.length === 0) {
     return (
       <View style={[styles.emptyContainer, { backgroundColor: Color.bg }]}>
         <Text style={[styles.emptyText, { color: Color.text }]}>Your cart is empty</Text>
         <Text style={[styles.emptySubText, { color: Color.muted }]}>Add some items to get started</Text>
+        <TouchableOpacity
+          style={[styles.shopButton, { backgroundColor: Color.primary }]}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Text style={styles.shopButtonText}>Start Shopping</Text>
+        </TouchableOpacity>
       </View>
     )
   }
@@ -293,6 +452,14 @@ const MyOrder = () => {
         style={styles.cartItems}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Color.primary]}
+            tintColor={Color.primary}
+          />
+        }
       >
         {cartItems.map((item) => (
           <CartItem
@@ -300,7 +467,6 @@ const MyOrder = () => {
             item={item}
             onIncrease={increaseQuantity}
             onDecrease={decreaseQuantity}
-            onToggle={toggleCheckbox}
             onRemove={removeItem}
             colors={Color}
           />
@@ -318,13 +484,18 @@ const MyOrder = () => {
 
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryText, { color: Color.muted }]}>Delivery Fee</Text>
-          <Text style={[styles.freeText, { color: Color.green }]}>Free</Text>
+          <Text style={[deliveryFee === 0 ? styles.freeText : styles.summaryAmount,
+          deliveryFee === 0 ? { color: Color.green } : { color: Color.text }]}>
+            {deliveryFee === 0 ? 'Free' : `₹${deliveryFee.toFixed(0)}`}
+          </Text>
         </View>
 
-        <View style={styles.summaryRow}>
-          <Text style={[styles.summaryText, { color: Color.muted }]}>Discount</Text>
-          <Text style={[styles.discountText, { color: Color.primary }]}>-₹{discountInr.toFixed(0)}</Text>
-        </View>
+        {discountInr > 0 && (
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryText, { color: Color.muted }]}>Discount</Text>
+            <Text style={[styles.discountText, { color: Color.primary }]}>-₹{discountInr.toFixed(0)}</Text>
+          </View>
+        )}
 
         <View style={[styles.totalRow, { borderTopColor: Color.border }]}>
           <Text style={[styles.totalText, { color: Color.text }]}>Total</Text>
@@ -336,14 +507,13 @@ const MyOrder = () => {
       <TouchableOpacity
         style={[
           styles.orderButton,
-          { backgroundColor: Color.primary },
-          selectedItems.length === 0 && [styles.disabledButton, { backgroundColor: Color.gray[400] }]
+          { backgroundColor: Color.primary }
         ]}
         onPress={handleOrderNow}
-        disabled={selectedItems.length === 0}
+        disabled={cartItems.length === 0 || isLoading}
       >
         <Text style={styles.orderButtonText}>
-          Order Now - ₹{totalInr.toFixed(0)}
+          {isLoading ? 'Processing...' : `Order Now - ₹${totalInr.toFixed(0)}`}
         </Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -375,25 +545,65 @@ const styles = StyleSheet.create({
   emptySubText: {
     fontSize: ms(14),
     textAlign: 'center',
+    marginBottom: vs(16),
+  },
+  retryButton: {
+    paddingHorizontal: s(24),
+    paddingVertical: vs(10),
+    borderRadius: s(8),
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: ms(14),
+    fontWeight: 'bold',
+  },
+  shopButton: {
+    paddingHorizontal: s(24),
+    paddingVertical: vs(12),
+    borderRadius: s(8),
+  },
+  shopButtonText: {
+    color: '#fff',
+    fontSize: ms(14),
+    fontWeight: 'bold',
   },
   cartItems: {
     flex: 1,
   },
   cartItem: {
     flexDirection: 'row',
-    padding: s(10),
+    padding: s(10), // This is the box padding (10)
     borderRadius: s(8),
     marginBottom: vs(8),
     borderWidth: 1,
     gap: s(8),
     alignItems: 'center'
   },
-  unselectedItem: {
-    opacity: 0.6,
+  imageContainer: {
+    width: s(65),
+    height: s(65),
+    padding: s(10), // Inner padding for the image box
+    borderRadius: s(10),
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  defaultImage: {
+    width: '100%',
+    height: '100%',
   },
   productImage: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  imageLoaded: {
+    opacity: 1,
+  },
+  imageLoading: {
+    opacity: 0,
   },
   itemInfo: {
     flex: 1,
@@ -408,10 +618,11 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: ms(14),
     fontWeight: 'bold',
-    marginBottom: vs(6),
+    marginBottom: vs(2),
   },
-  unselectedText: {
-    // Color handled via props
+  itemQuantity: {
+    fontSize: ms(11),
+    marginBottom: vs(4),
   },
   controlsContainer: {
     flexDirection: "row",
@@ -429,13 +640,6 @@ const styles = StyleSheet.create({
     minWidth: s(18),
     textAlign: 'center'
   },
-  imageContainer: {
-    width: s(65),
-    height: s(65),
-    padding: s(8),
-    borderRadius: s(10),
-    borderWidth: 1,
-  },
   circle: {
     borderWidth: s(0.5),
     alignItems: "center",
@@ -443,20 +647,6 @@ const styles = StyleSheet.create({
     width: s(22),
     height: s(22),
     borderRadius: s(50)
-  },
-  disabledCircle: {
-    // Border color handled via props
-  },
-  checkBox: {
-    width: s(18),
-    height: s(18),
-    borderWidth: s(0.5),
-    borderRadius: s(3),
-    justifyContent: "center",
-    alignItems: "center"
-  },
-  checkedBox: {
-    // Background and border color handled via props
   },
   deleteButton: {
     padding: s(4),
@@ -471,11 +661,13 @@ const styles = StyleSheet.create({
   summaryHeader: {
     fontSize: ms(12),
     fontWeight: 'bold',
+    marginBottom: vs(8),
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: vs(6),
   },
   summaryText: {
     fontSize: ms(11),
@@ -514,9 +706,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: vs(8),
   },
-  disabledButton: {
-    // Background color handled via props
-  },
   orderButtonText: {
     fontSize: ms(14),
     fontWeight: 'bold',
@@ -535,11 +724,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: s(8),
     alignItems: 'center'
-  },
-  skeletonCheckbox: {
-    width: s(18),
-    height: s(18),
-    borderRadius: s(3),
   },
   skeletonImage: {
     width: s(65),

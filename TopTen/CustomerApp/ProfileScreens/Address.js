@@ -4,7 +4,7 @@ import { s, vs, ms } from 'react-native-size-matters';
 import { AddressIcon, CheckIcon, CheckIcon2, CrossIcon, PaymentCheckBoxIcon, ThreeDotIcon, UncheckCheckBoxIcon } from '../../../src/SVGicons/icon';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
-import { deleteUserAddress, fetchUserAddress, setSelectedAddress as setSelectedAddressAction } from '../../../store/slices/userSlice';
+import { deleteUserAddress, fetchUserAddress, setSelectedAddress, setSelectedAddress as setSelectedAddressAction } from '../../../store/slices/userSlice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DARK, BRAND } from '../../../src/constant/colors';
 
@@ -16,7 +16,7 @@ const Address = () => {
     const selectedAddressId = useSelector(state => state?.user?.selectedAddress, shallowEqual);
     const Theme = useSelector(state => state?.auth?.Theme, shallowEqual);
     const userAddresses = useSelector(state => state?.user?.address || [], shallowEqual);
-    console.log('selected addres  id:', selectedAddressId)
+    console.log('selected address id:', selectedAddressId)
 
     // Local state for modals and address for modals
     const [modalVisible, setModalVisible] = useState(false);
@@ -26,7 +26,6 @@ const Address = () => {
 
     useEffect(() => {
         dispatch(fetchUserAddress());
-
     }, [dispatch]);
 
     useEffect(() => {
@@ -88,13 +87,22 @@ const Address = () => {
 
     // Render Address Card
     const renderAddressCard = useCallback((address) => {
-        const isSelected = selectedAddressId === address.id;
+        // FIX: Check if selectedAddressId exists before accessing .id
+        const isSelected = selectedAddressId ? selectedAddressId.id === address.id : false;
+        
         return (
-            <TouchableOpacity onPress={() => dispatch(setSelectedAddressAction(address.id))}
+            <TouchableOpacity 
+                onPress={() => {
+                    console.log("tap:", address)
+                    dispatch(setSelectedAddress(address))
+                }}
                 key={address.id}
-                style={[styles.addressCard, Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border },
-                isSelected && {borderColor:BRAND.orange}
-                ]}>
+                style={[
+                    styles.addressCard, 
+                    Theme && { backgroundColor: DARK.gray[100], borderColor: DARK.border },
+                    isSelected && { borderColor: BRAND.orange }
+                ]}
+            >
                 <TouchableOpacity
                     style={styles.ThreeDoteView}
                     onPress={() => handleThreeDotPress(address)}

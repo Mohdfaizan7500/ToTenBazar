@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { BASE_URL } from '../../config';
-import { fetchAllGroups, fetchBannerConfig, fetchCategories } from "./userSlice";
+import { fetchAllGroups, fetchBannerConfig, fetchCategories, GetKartInfo } from "./userSlice";
 
 // Helper function to clean URL encoding issues
 const cleanUrl = (url) => {
@@ -99,6 +99,8 @@ export const loginUser = createAsyncThunk(
         await dispatch(fetchBannerConfig());
         await dispatch(fetchCategories());
         await dispatch(fetchAllGroups())
+        await dispatch(GetKartInfo());
+
 
 
       }

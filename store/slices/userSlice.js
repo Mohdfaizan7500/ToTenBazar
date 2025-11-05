@@ -10,7 +10,8 @@ export const checkUserStatus = createAsyncThunk("user/checkUserStatus", async (_
         // const profilepic = await AsyncStorage.getItem("userprofilepic")
         await dispatch(fetchBannerConfig());
         await dispatch(fetchCategories());
-        await dispatch(fetchAllGroups())
+        await dispatch(fetchAllGroups());
+        await dispatch(GetKartInfo());
         // await dispatch()
         // console.log('profilepic on userslice:', profilepic)
         return {
@@ -199,7 +200,7 @@ export const fetchProductDetails = createAsyncThunk(
                     },
                 }
             );
-
+            console.log("line 203:", response)
             console.log("Product details response status:", response.status);
 
             if (!response.ok) {
@@ -413,6 +414,170 @@ export const fetchCategories = createAsyncThunk(
 );
 
 
+export const GetKartInfo = createAsyncThunk(
+    "order/GetKartInfo",
+    async (_, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const accessToken = state.auth?.accessToken || await AsyncStorage.getItem('accessToken');
+
+            const response = await fetch(`${BASE_URL}/order/order`, {
+                method: "GET",
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || "Failed to fetch categories");
+            }
+
+            const data = await response.json();
+            console.log("data my kart on userSlics:", data)
+            return data;
+        } catch (error) {
+            return rejectWithValue(error.message || "Failed to fetch categories");
+        }
+    }
+);
+
+export const addToCart = createAsyncThunk(
+    "order/addToCart",
+    async (product, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const accessToken = state.auth?.accessToken || await AsyncStorage.getItem('accessToken');
+
+            const response = await fetch(`${BASE_URL}/order/order`, {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+
+                },
+                body: JSON.stringify(product)
+            });
+            // if (response.ok) {
+            await dispatch(GetKartInfo());
+
+            // }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || "Failed to fetch categories");
+            }
+
+            const data = await response.json();
+            console.log("Product add to Cart:", data)
+            return data;
+        } catch (error) {
+            return rejectWithValue(error.message || "Failed to fetch categories");
+        }
+    }
+);
+
+export const fetchCoupons = createAsyncThunk(
+    "order/fetchCoupons",
+    async ({ page = 1, limit = 10, loadMore = false } = {}, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const accessToken = state.auth?.accessToken || await AsyncStorage.getItem('accessToken');
+
+            if (!accessToken) {
+                return rejectWithValue("No access token found");
+            }
+
+            // Build query parameters for pagination
+            const queryParams = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString()
+            });
+
+            const response = await fetch(`${BASE_URL}/order/get_coupon?${queryParams}`, {
+                method: "GET",
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            console.log("Coupons response status:", response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Coupons API error:", errorText);
+
+                let errorMessage = "Failed to fetch coupons";
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.message || errorData.detail || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText || errorMessage;
+                }
+
+                return rejectWithValue(errorMessage);
+            }
+
+            const data = await response.json();
+            console.log("Coupons API success:", data);
+
+            // Ensure consistent data structure with pagination info
+            return {
+                coupons: data.coupons || data.data || data.results || [],
+                pagination: {
+                    currentPage: data.current_page || data.page || page,
+                    totalPages: data.total_pages || data.pages || Math.ceil((data.total || data.count || 0) / limit),
+                    totalItems: data.total || data.count || 0,
+                    hasNext: data.has_next || data.next !== null,
+                    hasPrevious: data.has_previous || data.previous !== null,
+                    limit: limit
+                },
+                loadMore: loadMore,
+                message: data.message || "Coupons fetched successfully",
+                timestamp: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error("Coupons fetch error:", error);
+            return rejectWithValue(error.message || "Network error: Failed to fetch coupons");
+        }
+    }
+);
+
+export const applyCoupon = createAsyncThunk(
+    "order/applyCoupon",
+    async (couponCode, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const accessToken = state.auth?.accessToken || await AsyncStorage.getItem('accessToken');
+
+            const response = await fetch(`${BASE_URL}/order/apply_coupon`, { // Adjust endpoint if different
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ coupon_code: couponCode })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || "Failed to apply coupon");
+            }
+
+            const data = await response.json();
+            console.log("Applied coupon data:", data);
+            return data;
+        } catch (error) {
+            return rejectWithValue(error.message || "Failed to apply coupon");
+        }
+    }
+);
+
+
+
 
 
 
@@ -427,6 +592,9 @@ const initialState = {
     groupProducts: {},
     subcategories: {},
     productDetails: {},
+    KartInfo: {},
+    isKartInfoLoading: false,
+    kartInfoError: null,
     isLoadingProductDetails: false, // Add loading state for product details
     subcategoriesProduct: {},
     isLoadingsubcategoriesProduct: false,
@@ -435,6 +603,12 @@ const initialState = {
     isLoading: false,
     error: null,
     selectedAddress: null,
+    coupons: [],
+    appliedCoupon: null,
+    isCouponsLoading: false,
+    couponsError: null,
+    isApplyingCoupon: false,
+    applyCouponError: null,
 };
 
 const userSlice = createSlice({
@@ -473,11 +647,99 @@ const userSlice = createSlice({
                 state.productDetails = {};
             }
         },
+        clearKartInfo: (state, action) => {
+            state.KartInfo = {}
+        },
+        // Add coupon-related reducers
+        clearAppliedCoupon: (state) => {
+            state.appliedCoupon = null;
+            state.applyCouponError = null;
+        },
+        clearCoupons: (state) => {
+            state.coupons = [];
+            state.couponsError = null;
+        },
+        removeCoupon: (state) => {
+            state.appliedCoupon = null;
+        },
+        // In your userSlice, add validation
+        addToCartdata: (state, action) => {
+            const payload = action.payload;
+
+            // Validate payload structure
+            if (!payload || !payload.items) {
+                console.error('Invalid addToCart payload:', payload);
+                return;
+            }
+
+            // Filter out invalid items
+            const validItems = payload.items.filter(item =>
+                item && item.product && item.quantity
+            );
+
+            state.KartInfo = {
+                ...state.KartInfo,
+                order_id: payload.order_id,
+                items: validItems
+            };
+        }
     },
     extraReducers: (builder) => {
         builder
+            // Apply Coupon (if implemented)
+            .addCase(applyCoupon.pending, (state) => {
+                state.isApplyingCoupon = true;
+                state.applyCouponError = null;
+            })
+            .addCase(applyCoupon.fulfilled, (state, action) => {
+                state.isApplyingCoupon = false;
+                state.appliedCoupon = action.payload;
+            })
+            .addCase(applyCoupon.rejected, (state, action) => {
+                state.isApplyingCoupon = false;
+                state.applyCouponError = action.payload;
+            })
+            .addCase(fetchCoupons.pending, (state) => {
+                state.isCouponsLoading = true;
+                state.couponsError = null;
+            })
+            .addCase(fetchCoupons.fulfilled, (state, action) => {
+                state.isCouponsLoading = false;
+                state.coupons = action.payload; // Assuming API returns array of coupons
+            })
+            .addCase(fetchCoupons.rejected, (state, action) => {
+                state.isCouponsLoading = false;
+                state.couponsError = action.payload;
+            })
+            .addCase(addToCart.pending, (state, action) => {
+                console.log("loding")
+
+
+            })
+            .addCase(addToCart.fulfilled, (state, action) => {
+                state.KartInfo = {
+                    ...state.KartInfo,
+                    ...action.payload
+                };
+            })
+
+            .addCase(addToCart.rejected, (state, action) => {
+
+            })
+            .addCase(GetKartInfo.pending, (state, action) => {
+                state.isKartInfoLoading = true;
+                state.kartInfoError = null;
+            })
+            .addCase(GetKartInfo.fulfilled, (state, action) => {
+                state.isKartInfoLoading = false;
+                state.KartInfo = action.payload;
+            })
+            .addCase(GetKartInfo.rejected, (state, action) => {
+                state.isKartInfoLoading = false;
+                state.kartInfoError = action.payload;
+            })
             // Add this case for fetchProductDetails
-            .addCase(fetchProductDetails.pending, (state) => {
+            .addCase(fetchProductDetails.pending, (state, action) => {
                 state.isLoadingProductDetails = true;
                 state.errorProductDetails = null;
             })
@@ -677,7 +939,12 @@ export const {
     setSelectedAddress,
     clearSubcategories,
     clearSubcategoriesProduct,
-    clearProductDetails // Add this
+    clearProductDetails, // Add this
+    clearKartInfo,
+    clearAppliedCoupon,
+    clearCoupons,
+    removeCoupon,
+    addToCartdata
 
 } = userSlice.actions;
 

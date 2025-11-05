@@ -66,7 +66,7 @@ const CategoriesCatlog = () => {
         "Vegetables"
     ], []);
 
-    const currentCategoryId = item?.id;
+    const currentCategoryId = item?.product;
     const currentSubcategories = useMemo(() =>
         subcategories[currentCategoryId]?.data || [],
         [subcategories, currentCategoryId]
@@ -275,7 +275,7 @@ const CategoriesCatlog = () => {
         onEndReachedCalledDuringMomentumRef.current = true;
 
         if (item?.id) {
-            handleFetchSubcategories(item.id);
+            handleFetchSubcategories(item.product);
         }
         return () => {
             isMountedRef.current = false;
@@ -517,8 +517,8 @@ const CategoriesCatlog = () => {
     const handleRetry = useCallback(() => {
         if (selectedSubcategory?.id) {
             handleFetchSubcategoriesDetails(selectedSubcategory.id, 1);
-        } else if (item?.id) {
-            handleFetchSubcategories(item.id);
+        } else if (item?.product) {
+            handleFetchSubcategories(item.product);
         }
     }, [selectedSubcategory, item, handleFetchSubcategoriesDetails, handleFetchSubcategories]);
 
@@ -560,7 +560,7 @@ const CategoriesCatlog = () => {
                     ) : (
                         <FlatList
                             data={currentSubcategories}
-                            keyExtractor={(item, index) => item.id?.toString() || `subcat-${index}`}
+                            keyExtractor={(item, index) => item.product?.toString() || `subcat-${index}`}
                             renderItem={renderSubcategoryItem}
                             showsVerticalScrollIndicator={false}
                             ListEmptyComponent={
@@ -598,7 +598,7 @@ const CategoriesCatlog = () => {
                         <FlatList
                             contentContainerStyle={[styles.productListContent, { gap: responsive.spacing.small }]}
                             data={products}
-                            keyExtractor={(item, index) => `${item.id || item.product_id}-${index}`}
+                            keyExtractor={(item, index) => `${item.product || item.product_id}-${index}`}
                             numColumns={isTablet ? 3 : 2}
                             renderItem={renderProductItem}
                             showsVerticalScrollIndicator={false}

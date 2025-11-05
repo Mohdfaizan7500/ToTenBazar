@@ -4,7 +4,7 @@ import { DARK, BRAND } from '../../../src/constant/colors'
 import { BagIcon, BellIcon, DownArrowIcon, FavoriteIcon, LocationIcon, SearchIcon } from '../../../src/SVGicons/icon'
 import { s, vs } from 'react-native-size-matters'
 import { useNavigation } from '@react-navigation/native'
-import { useSelector, useDispatch } from 'react-redux'
+import { useSelector, useDispatch, shallowEqual } from 'react-redux'
 import LinearGradient from 'react-native-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -21,6 +21,10 @@ const Home = () => {
   const Theme = useSelector(state => state?.auth?.Theme)
   const navigation = useNavigation()
   const dispatch = useDispatch()
+
+  // Safe access to itemsInCart with fallback
+  const itemsInCart = useSelector(state => state.user?.KartInfo?.items || [])
+
   const colors = Theme ? DARK : BRAND;
 
   // Search text animation states
@@ -56,15 +60,34 @@ const Home = () => {
     "Search for \"Sugar\""
   ];
 
-  // Redux selectors
-  const Banner_Config = useSelector(state => state.user.Baner_Config)
-  const ProductCategories = useSelector(state => state.user.categories)
-  const allGroups = useSelector(state => state.user.allGroups)
-  const groupProducts = useSelector(state => state.user.groupProducts)
-  const isLoading = useSelector(state => state.user.isLoading)
-  const error = useSelector(state => state.user.error)
+  // Redux selectors with safe access and fallbacks
+  const Banner_Config = useSelector(state => state.user?.Baner_Config || [])
+  const ProductCategories = useSelector(state => state.user?.categories || [])
+  const allGroups = useSelector(state => state.user?.allGroups || {})
+  const groupProducts = useSelector(state => state.user?.groupProducts || {})
+  const isLoading = useSelector(state => state.user?.isLoading || false)
+  const error = useSelector(state => state.user?.error || null)
+  const selectedAddress = useSelector(state => state?.user?.selectedAddress, shallowEqual);
 
-  const allgroupnames = allGroups?.active_group_names;
+  const allgroupnames = allGroups?.active_group_names || [];
+
+  // Format address for display
+  const formattedAddress = useMemo(() => {
+    if (!selectedAddress) {
+      return 'Select delivery address';
+    }
+    
+    // Use address name (e.g., "Office") and city for a concise display
+    const addressParts = [];
+    if (selectedAddress.city) {
+      addressParts.push(selectedAddress.city);
+    }
+    if (selectedAddress.state) {
+      addressParts.push(selectedAddress.state);
+    }
+    
+    return addressParts.length > 0 ? addressParts.join(', ') : 'Delivery address';
+  }, [selectedAddress]);
 
   // Memoized data
   const slicedBannerConfig = useMemo(() =>
@@ -73,7 +96,7 @@ const Home = () => {
   )
 
   const randomCategories = useMemo(() => {
-    if (!ProductCategories) return [];
+    if (!ProductCategories || !Array.isArray(ProductCategories)) return [];
     return [...ProductCategories]
       .sort(() => Math.random() - 0.5)
       .slice(0, 8);
@@ -264,7 +287,7 @@ const Home = () => {
         // Existing lazy loading logic
         const newVisibleSections = new Set(['banner', 'categories']);
 
-        if (allgroupnames) {
+        if (allgroupnames && Array.isArray(allgroupnames)) {
           allgroupnames.forEach((groupName, index) => {
             const sectionPosition = (index * ITEM_HEIGHT_ESTIMATE) + 500;
             if (sectionPosition <= scrollPosition + (screenHeight * LAZY_LOAD_THRESHOLD)) {
@@ -324,6 +347,7 @@ const Home = () => {
   }, [navigation])
 
   const formatString = useCallback((str) => {
+    if (!str) return '';
     return str
       .split(' ')
       .filter(word => word.trim() !== '')
@@ -455,7 +479,7 @@ const Home = () => {
 
   // Optimized group sections with lazy loading
   const groupSections = useMemo(() => {
-    if (!allgroupnames) return null;
+    if (!allgroupnames || !Array.isArray(allgroupnames)) return null;
 
     return allgroupnames.map((groupName, index) => {
       if (!visibleSections.has(`group-${index}`)) {
@@ -633,10 +657,14 @@ const Home = () => {
               </View>
               <View>
                 <View style={styles.addressHeader}>
-                  <Text style={styles.homeText}>Home</Text>
+                  <Text style={styles.homeText}>
+                    {selectedAddress?.add_name || 'Home'}
+                  </Text>
                   <DownArrowIcon width={s(20)} height={s(20)} stroke={BRAND.white} />
                 </View>
-                <Text style={styles.address}>Karol Bagh, New Delhi</Text>
+                <Text style={styles.address} numberOfLines={1}>
+                  {formattedAddress}
+                </Text>
               </View>
             </TouchableOpacity>
 
@@ -646,6 +674,25 @@ const Home = () => {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.iconCircle, { backgroundColor: colors.bg }]} onPress={() => navigation.navigate('MyCart')}>
                 <BagIcon width={s(20)} height={s(20)} stroke={BRAND.orange} />
+                {itemsInCart && itemsInCart.length > 0 ? (
+                  <View style={{
+                    width: s(17),
+                    height: s(17),
+                    backgroundColor: "red",
+                    position: "absolute",
+                    alignItems: "center",
+                    borderRadius: s(100),
+                    justifyContent: "center",
+                    top: vs(-5),
+                    right: s(-5),
+                  }}>
+                    <Text style={{
+                      fontSize: s(10),
+                      fontWeight: "900",
+                      color: colors.white
+                    }}>{itemsInCart.length}</Text>
+                  </View>
+                ) : null}
               </TouchableOpacity>
             </View>
           </View>
@@ -656,7 +703,6 @@ const Home = () => {
           }}>
             <SearchIcon width={s(20)} height={s(20)} stroke={colors.muted} />
             <View style={styles.searchTextContainer}>
-              {/* <Text style={styles.searchStaticText}>Search for </Text> */}
               <View style={styles.animatedKeywordContainer}>
                 <Animated.Text
                   style={[
@@ -814,9 +860,8 @@ const styles = StyleSheet.create({
   },
   animatedKeywordContainer: {
     height: s(40),
-    paddingHorizontal:s(10),
+    paddingHorizontal: s(10),
     overflow: 'hidden',
-    // backgroundColor:"red",
     justifyContent: 'center',
     marginLeft: s(4),
   },
@@ -945,7 +990,6 @@ const styles = StyleSheet.create({
   categoryImageFull: {
     width: "100%",
     height: "100%",
-    // mixBlendMode:"multiply"
   },
   categoryItemTitle: {
     fontSize: s(11),
@@ -1005,7 +1049,6 @@ const styles = StyleSheet.create({
     color: BRAND.muted
   },
   priceContainer: {
-    // flexDirection: 'row',
     alignItems: 'center',
     gap: s(4),
   },

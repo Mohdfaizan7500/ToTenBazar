@@ -3,38 +3,40 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import BRAND from '../../../src/constant/color';
 import { s, vs, ms } from 'react-native-size-matters';
-import { AddToCartIcon, MinusIcon, PlusIcon, BackIcon } from '../../../src/SVGicons/icon';
+import { AddToCartIcon, MinusIcon, PlusIcon, BackIcon, SearchIcon } from '../../../src/SVGicons/icon';
 // Remove ShareIcon import if it doesn't exist
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProductDetails } from '../../../store/slices/userSlice';
+import { addToCart, fetchProductDetails } from '../../../store/slices/userSlice';
+import { DARK } from '../../../src/constant/colors';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 // Simple share icon component as fallback
 const ShareIcon = ({ width, height, color }) => (
-  <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
-    <View style={{
-      width: width * 0.7,
-      height: height * 0.7,
-      borderWidth: 1,
-      borderColor: color,
-      borderRadius: 2,
-      justifyContent: 'center',
-      alignItems: 'center'
-    }}>
-      <View style={{
-        width: width * 0.3,
-        height: height * 0.3,
-        backgroundColor: color,
-        borderRadius: 1,
-      }} />
+    <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{
+            width: width * 0.7,
+            height: height * 0.7,
+            borderWidth: 1,
+            borderColor: color,
+            borderRadius: 2,
+            justifyContent: 'center',
+            alignItems: 'center'
+        }}>
+            <View style={{
+                width: width * 0.3,
+                height: height * 0.3,
+                backgroundColor: color,
+                borderRadius: 1,
+            }} />
+        </View>
     </View>
-  </View>
 );
 
 const AboutProductScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
+    const KartInfo = useSelector(state => state.user.KartInfo);
     const dispatch = useDispatch();
 
     const {
@@ -53,7 +55,7 @@ const AboutProductScreen = () => {
     const scrollEndTimerRef = useRef(null);
 
     // Extract product ID from route params
-    const productId = route?.params?.item?.id;
+    const productId = route?.params?.item?.product;
     console.log("productId:", productId);
 
     // Fetch product details
@@ -75,7 +77,7 @@ const AboutProductScreen = () => {
         const originalPrice = apiProductData.original_price ? apiProductData.original_price / 100 : 0;
 
         return {
-            id: apiProductData.id,
+            id: apiProductData.product,
             name: apiProductData.name,
             category: apiProductData.category,
             currentPrice: currentPrice,
@@ -91,10 +93,21 @@ const AboutProductScreen = () => {
     const images = useMemo(() => {
         if (!apiProductData?.image) return [];
 
-        return apiProductData.image.map(img => 
+        return apiProductData.image.map(img =>
             img.image_url || img.image
         ).filter(Boolean);
     }, [apiProductData]);
+
+    // Calculate total items in cart
+    const totalCartItems = useMemo(() => {
+        if (!KartInfo?.items) return 0;
+        return KartInfo.items.reduce((total, item) => total + item.quantity, 0);
+    }, [KartInfo]);
+
+    // Log KartInfo changes
+    useEffect(() => {
+        console.log("Current KartInfo:", KartInfo);
+    }, [KartInfo]);
 
     // Cleanup all timers and animations when component unmounts
     useEffect(() => {
@@ -173,25 +186,90 @@ const AboutProductScreen = () => {
         setQuantity(prevQuantity => prevQuantity > 1 ? prevQuantity - 1 : 1);
     }, []);
 
-    const handleAddToCart = useCallback(() => {
-        if (!product) return;
+ const handleAddToCart = useCallback(() => {
+    console.log("190",product)
+    if (!product) {
+        console.log('No product data available');
+        return;
+    }
 
-        // Check stock availability
-        if (product.stock < quantity) {
-            alert(`Only ${product.stock} items available in stock!`);
-            return;
-        }
+    // Check stock availability
+    if (product.stock < quantity) {
+        alert(`Only ${product.stock} items available in stock!`);
+        return;
+    }
 
-        const totalPrice = product.currentPrice * quantity;
-        const cartItem = {
-            product: product,
-            quantity: quantity,
-            totalPrice: totalPrice
-        };
+    // Get existing cart items from KartInfo or create empty array
+    const existingItems = KartInfo?.items || [];
+    
+    // Transform existing items to only include product and quantity for API
+    const transformedExistingItems = existingItems.map(item => ({
+        product: item.product, // Use the product ID
+        quantity: item.quantity
+    }));
 
-        console.log('Added to cart:', cartItem);
-        alert(`Added ${quantity} ${product.unit} of ${product.name} to cart!`);
-    }, [product, quantity]);
+    // Check if product already exists in cart
+    const existingProductIndex = transformedExistingItems.findIndex(item => item.product === product.product);
+    
+    let updatedItems;
+    
+    if (existingProductIndex !== -1) {
+        // Update quantity if product exists
+        updatedItems = transformedExistingItems.map((item, index) => 
+            index === existingProductIndex 
+                ? { ...item, quantity: item.quantity + quantity }
+                : item
+        );
+    } else {
+        // Add new product if it doesn't exist
+        updatedItems = [
+            ...transformedExistingItems,
+            {
+                product: productId,
+                quantity: quantity
+            }
+        ];
+    }
+
+    // Create the payload with order_id from existing KartInfo or generate new one
+    const payload = {
+        order_id: KartInfo?.order_id || `TTB${Date.now()}ODR${Math.floor(Math.random() * 1000)}`,
+        items: updatedItems
+    };
+
+    // Display both the API payload and current KartInfo details
+    // console.log('=== ADD TO CART DETAILS ===');
+    // console.log('API Payload being sent:');
+    console.log(JSON.stringify(payload, null, 2));
+    dispatch(addToCart(payload))
+    
+    // console.log('Current KartInfo from Redux:');
+    // console.log(JSON.stringify({
+    //     order_id: KartInfo?.order_id,
+    //     items: KartInfo?.items || []
+    // }, null, 2));
+    
+    // console.log('Product being added:');
+    // console.log(JSON.stringify({
+    //     id: product.id,
+    //     name: product.name,
+    //     price: product.currentPrice,
+    //     quantity: quantity,
+    //     stock: product.stock
+    // }, null, 2));
+    
+    // console.log('Updated items count:', updatedItems.reduce((total, item) => total + item.quantity, 0));
+    // console.log('================');
+
+    // Dispatch the action with payload
+    // dispatch(addToCart(payload));
+
+    // Show success message
+    alert('Product added to cart successfully!');
+    
+    // Reset quantity to 1 after adding to cart
+    setQuantity(1);
+}, [product, quantity, dispatch, KartInfo]);
 
     // Navigation handlers
     const handleBackPress = useCallback(() => {
@@ -201,7 +279,8 @@ const AboutProductScreen = () => {
     const handleSharePress = useCallback(() => {
         // Navigate to share screen or implement share functionality
         console.log('Share product:', product);
-        alert('Share functionality to be implemented');
+        navigation.navigate('SearchScreen')
+        // alert('Share functionality to be implemented');
     }, [product]);
 
     // Calculate discount percentage if not provided
@@ -304,6 +383,13 @@ const AboutProductScreen = () => {
         <View style={styles.container}>
             <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
+            {/* Cart Count Badge */}
+            {totalCartItems > 0 && (
+                <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{totalCartItems}</Text>
+                </View>
+            )}
+
             {/* Image Carousel */}
             <View style={styles.imageContainer}>
                 {images.length > 0 ? (
@@ -324,10 +410,10 @@ const AboutProductScreen = () => {
                         {/* Top Navigation Circles */}
                         <View style={styles.topNavigationContainer}>
                             <TouchableOpacity style={styles.navCircle} onPress={handleBackPress}>
-                                <BackIcon width={s(18)} height={s(18)} color={BRAND.white} />
+                                <BackIcon width={s(18)} height={s(18)} stroke={'#fff'} />
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.navCircle} onPress={handleSharePress}>
-                                <ShareIcon width={s(18)} height={s(18)} color={BRAND.white} />
+                                <SearchIcon width={s(18)} height={s(18)} stroke={'#fff'} />
                             </TouchableOpacity>
                         </View>
 
@@ -658,5 +744,23 @@ const styles = StyleSheet.create({
         fontSize: s(11),
         color: BRAND.primary,
         fontWeight: '500',
+    },
+    cartBadge: {
+        position: 'absolute',
+        top: vs(50),
+        right: s(20),
+        backgroundColor: BRAND.primary,
+        width: s(20),
+        height: s(20),
+        borderRadius: s(10),
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+        elevation: 10,
+    },
+    cartBadgeText: {
+        color: BRAND.white,
+        fontSize: s(12),
+        fontWeight: 'bold',
     }
 });
