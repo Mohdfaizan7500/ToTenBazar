@@ -76,7 +76,7 @@ const Home = () => {
     if (!selectedAddress) {
       return 'Select delivery address';
     }
-    
+
     // Use address name (e.g., "Office") and city for a concise display
     const addressParts = [];
     if (selectedAddress.city) {
@@ -85,7 +85,7 @@ const Home = () => {
     if (selectedAddress.state) {
       addressParts.push(selectedAddress.state);
     }
-    
+
     return addressParts.length > 0 ? addressParts.join(', ') : 'Delivery address';
   }, [selectedAddress]);
 
@@ -564,6 +564,16 @@ const Home = () => {
         )}
 
         {/* Horizontal Categories - Always visible */}
+        {/* <FlatList
+          contentContainerStyle={[styles.categoriesContainerFlatlist, { backgroundColor: colors.bg }]}
+          data={categoriesitem}
+          horizontal
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderHorizontalCategoryItem}
+          scrollEnabled={false}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+        /> */}
         <FlatList
           contentContainerStyle={[styles.categoriesContainerFlatlist, { backgroundColor: colors.bg }]}
           data={categoriesitem}
@@ -927,19 +937,19 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   categoriesContainer: {
-    width: Dimensions.get('window').width / s(4) - s(4),
-    height: Dimensions.get('window').width / s(4) - s(4),
+    width: s(60), // Reduced width
+    height: s(60), // Reduced height - making it square
     borderRadius: s(10),
-    marginRight: s(8),
     backgroundColor: BRAND.border,
     alignItems: "center",
     justifyContent: "center",
-    padding: s(8)
+    padding: s(4) // Reduced padding
   },
   categoriesContainerFlatlist: {
-    paddingVertical: s(8),
-    paddingHorizontal: s(8),
-    backgroundColor: BRAND.bg
+    width: '100%',
+    paddingVertical: s(4),
+    backgroundColor: BRAND.bg,
+    justifyContent: 'space-evenly',
   },
   HeadingContainer: {
     width: "100%",
@@ -966,7 +976,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#828d840d',
     alignItems: "center",
     justifyContent: "center",
-    padding: s(2)
+    padding: s(5),
+    overflow: "hidden",
+
   },
   productCard: {
     width: s(140),
@@ -985,15 +997,18 @@ const styles = StyleSheet.create({
   },
   categoryItemWrapper: {
     alignItems: "center",
-    gap: s(4)
+    gap: s(2),
+    flex: 1, // This makes each item take equal space
   },
   categoryImageFull: {
     width: "100%",
     height: "100%",
   },
   categoryItemTitle: {
-    fontSize: s(11),
-    color: BRAND.text
+    fontSize: s(9), // Reduced font size
+    color: BRAND.text,
+    textAlign: 'center',
+    marginTop: s(2)
   },
   gridCategoriesContainer: {
     alignItems: "center",
@@ -1005,7 +1020,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: s(4),
     width: Dimensions.get('window').width / 4,
-    marginTop: s(8)
+    marginTop: s(8),
+    // overflow:"hidden"
   },
   gridCategoryTitle: {
     textAlign: "center",

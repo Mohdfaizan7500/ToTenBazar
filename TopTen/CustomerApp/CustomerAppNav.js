@@ -122,7 +122,7 @@ const CustomerAppNav = () => {
 
             <Stack.Screen name='OrderConfirem' component={OrderConfirem} options={{ headerShown: false }} />
             <Stack.Screen name='Offers' component={Offers}
-                options={({ navigation }) => getProfileHeaderOptions('Checkout', navigation)} />
+                options={({ navigation }) => getProfileHeaderOptions('Offer & Coupons', navigation)} />
             <Stack.Screen name='Catlog' component={Catlog}
                 options={({ route, navigation }) => {
                     const title = route?.params?.title || 'Catlog'

@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import BRAND from '../../../src/constant/color';
 import { s, vs, ms } from 'react-native-size-matters';
-import { AddToCartIcon, MinusIcon, PlusIcon, BackIcon, SearchIcon } from '../../../src/SVGicons/icon';
+import { AddToCartIcon, MinusIcon, PlusIcon, BackIcon, SearchIcon, BagIcon } from '../../../src/SVGicons/icon';
 // Remove ShareIcon import if it doesn't exist
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, fetchProductDetails } from '../../../store/slices/userSlice';
@@ -37,6 +37,7 @@ const AboutProductScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
     const KartInfo = useSelector(state => state.user.KartInfo);
+    const itemsInCart = useSelector(state => state.user?.KartInfo?.items || [])
     const dispatch = useDispatch();
 
     const {
@@ -186,90 +187,90 @@ const AboutProductScreen = () => {
         setQuantity(prevQuantity => prevQuantity > 1 ? prevQuantity - 1 : 1);
     }, []);
 
- const handleAddToCart = useCallback(() => {
-    console.log("190",product)
-    if (!product) {
-        console.log('No product data available');
-        return;
-    }
+    const handleAddToCart = useCallback(() => {
+        console.log("190", product)
+        if (!product) {
+            console.log('No product data available');
+            return;
+        }
 
-    // Check stock availability
-    if (product.stock < quantity) {
-        alert(`Only ${product.stock} items available in stock!`);
-        return;
-    }
+        // Check stock availability
+        if (product.stock < quantity) {
+            alert(`Only ${product.stock} items available in stock!`);
+            return;
+        }
 
-    // Get existing cart items from KartInfo or create empty array
-    const existingItems = KartInfo?.items || [];
-    
-    // Transform existing items to only include product and quantity for API
-    const transformedExistingItems = existingItems.map(item => ({
-        product: item.product, // Use the product ID
-        quantity: item.quantity
-    }));
+        // Get existing cart items from KartInfo or create empty array
+        const existingItems = KartInfo?.items || [];
 
-    // Check if product already exists in cart
-    const existingProductIndex = transformedExistingItems.findIndex(item => item.product === product.product);
-    
-    let updatedItems;
-    
-    if (existingProductIndex !== -1) {
-        // Update quantity if product exists
-        updatedItems = transformedExistingItems.map((item, index) => 
-            index === existingProductIndex 
-                ? { ...item, quantity: item.quantity + quantity }
-                : item
-        );
-    } else {
-        // Add new product if it doesn't exist
-        updatedItems = [
-            ...transformedExistingItems,
-            {
-                product: productId,
-                quantity: quantity
-            }
-        ];
-    }
+        // Transform existing items to only include product and quantity for API
+        const transformedExistingItems = existingItems.map(item => ({
+            product: item.product, // Use the product ID
+            quantity: item.quantity
+        }));
 
-    // Create the payload with order_id from existing KartInfo or generate new one
-    const payload = {
-        order_id: KartInfo?.order_id || `TTB${Date.now()}ODR${Math.floor(Math.random() * 1000)}`,
-        items: updatedItems
-    };
+        // Check if product already exists in cart
+        const existingProductIndex = transformedExistingItems.findIndex(item => item.product === product.product);
 
-    // Display both the API payload and current KartInfo details
-    // console.log('=== ADD TO CART DETAILS ===');
-    // console.log('API Payload being sent:');
-    console.log(JSON.stringify(payload, null, 2));
-    dispatch(addToCart(payload))
-    
-    // console.log('Current KartInfo from Redux:');
-    // console.log(JSON.stringify({
-    //     order_id: KartInfo?.order_id,
-    //     items: KartInfo?.items || []
-    // }, null, 2));
-    
-    // console.log('Product being added:');
-    // console.log(JSON.stringify({
-    //     id: product.id,
-    //     name: product.name,
-    //     price: product.currentPrice,
-    //     quantity: quantity,
-    //     stock: product.stock
-    // }, null, 2));
-    
-    // console.log('Updated items count:', updatedItems.reduce((total, item) => total + item.quantity, 0));
-    // console.log('================');
+        let updatedItems;
 
-    // Dispatch the action with payload
-    // dispatch(addToCart(payload));
+        if (existingProductIndex !== -1) {
+            // Update quantity if product exists
+            updatedItems = transformedExistingItems.map((item, index) =>
+                index === existingProductIndex
+                    ? { ...item, quantity: item.quantity + quantity }
+                    : item
+            );
+        } else {
+            // Add new product if it doesn't exist
+            updatedItems = [
+                ...transformedExistingItems,
+                {
+                    product: productId,
+                    quantity: quantity
+                }
+            ];
+        }
 
-    // Show success message
-    alert('Product added to cart successfully!');
-    
-    // Reset quantity to 1 after adding to cart
-    setQuantity(1);
-}, [product, quantity, dispatch, KartInfo]);
+        // Create the payload with order_id from existing KartInfo or generate new one
+        const payload = {
+            order_id: KartInfo?.order_id || `TTB${Date.now()}ODR${Math.floor(Math.random() * 1000)}`,
+            items: updatedItems
+        };
+
+        // Display both the API payload and current KartInfo details
+        // console.log('=== ADD TO CART DETAILS ===');
+        // console.log('API Payload being sent:');
+        console.log(JSON.stringify(payload, null, 2));
+        dispatch(addToCart(payload))
+
+        // console.log('Current KartInfo from Redux:');
+        // console.log(JSON.stringify({
+        //     order_id: KartInfo?.order_id,
+        //     items: KartInfo?.items || []
+        // }, null, 2));
+
+        // console.log('Product being added:');
+        // console.log(JSON.stringify({
+        //     id: product.id,
+        //     name: product.name,
+        //     price: product.currentPrice,
+        //     quantity: quantity,
+        //     stock: product.stock
+        // }, null, 2));
+
+        // console.log('Updated items count:', updatedItems.reduce((total, item) => total + item.quantity, 0));
+        // console.log('================');
+
+        // Dispatch the action with payload
+        // dispatch(addToCart(payload));
+
+        // Show success message
+        alert('Product added to cart successfully!');
+
+        // Reset quantity to 1 after adding to cart
+        setQuantity(1);
+    }, [product, quantity, dispatch, KartInfo]);
 
     // Navigation handlers
     const handleBackPress = useCallback(() => {
@@ -282,6 +283,13 @@ const AboutProductScreen = () => {
         navigation.navigate('SearchScreen')
         // alert('Share functionality to be implemented');
     }, [product]);
+
+    const handleMyCart = useCallback(() => {
+        // Navigate to share screen or implement share functionality
+        console.log('MyCart:', product);
+        navigation.navigate('MyCart')
+        // alert('Share functionality to be implemented');
+    }, [navigation]);
 
     // Calculate discount percentage if not provided
     const calculatedDiscount = useMemo(() => {
@@ -384,11 +392,11 @@ const AboutProductScreen = () => {
             <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
             {/* Cart Count Badge */}
-            {totalCartItems > 0 && (
+            {/* {totalCartItems > 0 && (
                 <View style={styles.cartBadge}>
                     <Text style={styles.cartBadgeText}>{totalCartItems}</Text>
                 </View>
-            )}
+            )} */}
 
             {/* Image Carousel */}
             <View style={styles.imageContainer}>
@@ -412,9 +420,33 @@ const AboutProductScreen = () => {
                             <TouchableOpacity style={styles.navCircle} onPress={handleBackPress}>
                                 <BackIcon width={s(18)} height={s(18)} stroke={'#fff'} />
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.navCircle} onPress={handleSharePress}>
-                                <SearchIcon width={s(18)} height={s(18)} stroke={'#fff'} />
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: s(10) }}>
+                                <TouchableOpacity style={styles.navCircle} onPress={handleSharePress}>
+                                    <SearchIcon width={s(18)} height={s(18)} stroke={'#fff'} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.navCircle} onPress={handleMyCart}>
+                                    <BagIcon width={s(18)} height={s(18)} stroke={'#fff'} />
+                                    {itemsInCart && itemsInCart.length > 0 ? <View style={{
+                                        width: s(17),
+                                        height: s(17),
+                                        backgroundColor: "red",
+                                        position: "absolute",
+                                        alignItems: "center",
+                                        borderRadius: s(100),
+                                        justifyContent: "center",
+                                        top: vs(-3),
+                                        right: s(-2),
+                                    }}>
+                                        <Text style={{
+                                            fontSize: s(10),
+                                            fontWeight: "900",
+                                            color: '#fff'
+                                        }}>{itemsInCart.length}</Text>
+                                    </View>
+                                        : null}
+
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         {images.length > 1 && (
@@ -432,7 +464,7 @@ const AboutProductScreen = () => {
                                 <BackIcon width={s(18)} height={s(18)} color={BRAND.white} />
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.navCircle} onPress={handleSharePress}>
-                                <ShareIcon width={s(18)} height={s(18)} color={BRAND.white} />
+                                <SearchIcon width={s(18)} height={s(18)} stroke={'#fff'} />
                             </TouchableOpacity>
                         </View>
                     </View>

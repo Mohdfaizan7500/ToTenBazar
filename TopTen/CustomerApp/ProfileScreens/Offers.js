@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native'
-import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Animated, RefreshControl } from 'react-native'
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { CupponIcon } from '../../../src/SVGicons/icon'
 import { s, vs, ms } from 'react-native-size-matters'
 import { useDispatch, useSelector } from 'react-redux'
@@ -30,6 +30,8 @@ const Offers = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [allCoupons, setAllCoupons] = useState([]);
+  // Refresh control state
+  const [refreshing, setRefreshing] = useState(false);
 
   console.log("coupons:", coupons)
 
@@ -65,7 +67,12 @@ const Offers = () => {
     if (isLoadingMore) {
       setIsLoadingMore(false);
     }
-  }, [coupons, currentPage, isLoadingMore]);
+
+    // Stop refresh when data is loaded
+    if (refreshing) {
+      setRefreshing(false);
+    }
+  }, [coupons, currentPage, isLoadingMore, refreshing]);
 
   // Check if coupon is applicable based on order amount
   const isCouponApplicable = useCallback((coupon) => {
@@ -105,13 +112,21 @@ const Offers = () => {
     }
   }, [currentPage, isLoadingMore, hasMore, isCouponsLoading, dispatch]);
 
-  // Refresh coupons
+  // Refresh coupons - pull to refresh
   const handleRefresh = useCallback(() => {
+    setRefreshing(true);
     setCurrentPage(1);
     setAllCoupons([]);
     setHasMore(true);
     dispatch(fetchCoupons({ page: 1, limit: 10, loadMore: false }));
   }, [dispatch]);
+
+  // Manual refresh function
+  const handleManualRefresh = useCallback(() => {
+    if (!refreshing && !isCouponsLoading) {
+      handleRefresh();
+    }
+  }, [refreshing, isCouponsLoading, handleRefresh]);
 
   // Helper function to format amount (no division by 100)
   const formatAmount = useCallback((amount) => {
@@ -192,6 +207,85 @@ const Offers = () => {
     };
   }, [formatAmount, formatCouponDescription, isCouponApplicable, getAmountNeeded]);
 
+  // Skeleton Loader Component with Shining Effect
+  const SkeletonLoader = React.memo(() => {
+    const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      const startShimmer = () => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(shimmerAnim, {
+              toValue: 1,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shimmerAnim, {
+              toValue: 0,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      };
+
+      startShimmer();
+    }, [shimmerAnim]);
+
+    const shimmerTranslate = shimmerAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-100, 100],
+    });
+
+    return (
+      <View style={[styles.skeletonCard, { backgroundColor: colors.white, borderColor: colors.border }]}>
+        <Animated.View 
+          style={[
+            styles.shimmer,
+            {
+              transform: [{ translateX: shimmerTranslate }],
+              backgroundColor: 'rgba(255, 255, 255, 0.4)',
+            }
+          ]} 
+        />
+        
+        {/* Header section */}
+        <View style={styles.skeletonHeader}>
+          <View style={[styles.skeletonCircle, { backgroundColor: colors.border }]} />
+          <View style={[styles.skeletonBadge, { backgroundColor: colors.border }]} />
+        </View>
+
+        {/* Code and button section */}
+        <View style={styles.skeletonRow}>
+          <View style={[styles.skeletonTextLarge, { backgroundColor: colors.border }]} />
+          <View style={[styles.skeletonButton, { backgroundColor: colors.border }]} />
+        </View>
+
+        {/* Description section */}
+        <View style={styles.skeletonRow}>
+          <View style={[styles.skeletonTextMedium, { backgroundColor: colors.border }]} />
+        </View>
+
+        {/* Additional info section */}
+        <View style={styles.skeletonRow}>
+          <View style={[styles.skeletonTextSmall, { backgroundColor: colors.border }]} />
+        </View>
+
+        {/* Note section */}
+        <View style={styles.skeletonRow}>
+          <View style={[styles.skeletonTextXSmall, { backgroundColor: colors.border }]} />
+        </View>
+      </View>
+    );
+  });
+
+  // Render multiple skeleton loaders
+  const renderSkeletonLoaders = useCallback(() => {
+    return Array.from({ length: 5 }).map((_, index) => (
+      <SkeletonLoader key={`skeleton-${index}`} />
+    ));
+  }, []);
+
   // Render footer with loading indicator
   const renderFooter = useCallback(() => {
     if (!isLoadingMore && !hasMore && applicableCoupons.length > 0) {
@@ -229,18 +323,16 @@ const Offers = () => {
         {
           backgroundColor: colors.white,
           borderColor: colors.border
-        },
-        !isApplicable && styles.disabledCard
+        }
       ]}>
         <View style={styles.couponHeader}>
-          <CupponIcon width={s(24)} height={s(24)} />
+          <CupponIcon width={s(20)} height={s(20)} />
           <View style={[
             styles.couponBadge,
             {
               backgroundColor: formattedCoupon.discountType === 'percentage'
                 ? '#FF6B6B'
-                : '#4ECDC4',
-              opacity: isApplicable ? 1 : 0.6
+                : '#4ECDC4'
             }
           ]}>
             <Text style={styles.couponBadgeText}>
@@ -253,8 +345,7 @@ const Offers = () => {
           <View style={styles.codeContainer}>
             <Text style={[
               styles.offerCode, 
-              { color: colors.text },
-              !isApplicable && { color: colors.muted }
+              { color: colors.text }
             ]}>
               {formattedCoupon.code}
             </Text>
@@ -290,8 +381,7 @@ const Offers = () => {
 
         <Text style={[
           styles.offerDescription, 
-          { color: colors.text },
-          !isApplicable && { color: colors.muted }
+          { color: colors.text }
         ]}>
           {formattedCoupon.description}
         </Text>
@@ -311,14 +401,6 @@ const Offers = () => {
         <Text style={[styles.offerNote, { color: colors.muted }]}>
           {formattedCoupon.note}
         </Text>
-
-        {!isApplicable && (
-          <View style={styles.requirementsContainer}>
-            <Text style={styles.requirementsText}>
-              Minimum order amount: ₹{formattedCoupon.minOrderAmount}
-            </Text>
-          </View>
-        )}
 
         {isApplyingCoupon && isApplied && (
           <ActivityIndicator size="small" color={colors.primary} style={styles.loadingIndicator} />
@@ -341,21 +423,41 @@ const Offers = () => {
       </Text>
       <TouchableOpacity
         style={[styles.retryButton, { backgroundColor: colors.primary }]}
-        onPress={handleRefresh}
+        onPress={handleManualRefresh}
+        disabled={refreshing}
       >
-        <Text style={styles.retryButtonText}>Refresh</Text>
+        {refreshing ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Text style={styles.retryButtonText}>Refresh</Text>
+        )}
       </TouchableOpacity>
     </View>
-  ), [colors, handleRefresh, amount]);
+  ), [colors, handleManualRefresh, amount, refreshing]);
 
-  // Render loading state
+  // Render loading state with skeleton cards
   if (isCouponsLoading && currentPage === 1 && applicableCoupons.length === 0) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.text }]}>Loading offers...</Text>
-        </View>
+        <FlatList
+          data={[]}
+          renderItem={null}
+          ListHeaderComponent={renderSkeletonLoaders}
+          contentContainerStyle={[styles.container, {
+            backgroundColor: colors.bg,
+            paddingBottom: vs(20),
+            flexGrow: 1
+          }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        />
       </SafeAreaView>
     );
   }
@@ -369,9 +471,14 @@ const Offers = () => {
           <Text style={[styles.errorSubText, { color: colors.muted }]}>{couponsError}</Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: colors.primary }]}
-            onPress={handleRefresh}
+            onPress={handleManualRefresh}
+            disabled={refreshing}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            {refreshing ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text style={styles.retryButtonText}>Retry</Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -380,20 +487,8 @@ const Offers = () => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
-      {/* Display order amount info */}
-      {/* {amount > 0 && (
-        <View style={[styles.orderAmountInfo, { backgroundColor: colors.primary }]}>
-          <Text style={styles.orderAmountText}>
-            Order Amount: ₹{formatAmount(amount)}
-          </Text>
-          <Text style={styles.applicableCouponsText}>
-            {applicableCoupons.filter(coupon => coupon.isApplicable).length} offers applicable
-          </Text>
-        </View>
-      )}
-       */}
       <FlatList
-        data={allCoupons} // Show all coupons but disable non-applicable ones
+        data={allCoupons}
         renderItem={renderCouponItem}
         keyExtractor={(item, index) => {
           const itemId = item.id || item.coupon_id || index;
@@ -413,6 +508,16 @@ const Offers = () => {
         maxToRenderPerBatch={10}
         windowSize={10}
         removeClippedSubviews={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+            title="Pull to refresh"
+            titleColor={colors.text}
+          />
+        }
       />
 
       {/* Show applied coupon banner if any */}
@@ -440,40 +545,81 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: s(12)
   },
-  orderAmountInfo: {
-    padding: s(12),
-    borderBottomWidth: s(0.5),
-    borderBottomColor: '#e0e0e0',
-    alignItems: 'center'
-  },
-  orderAmountText: {
-    color: 'white',
-    fontSize: ms(14),
-    fontWeight: 'bold',
-    marginBottom: vs(2)
-  },
-  applicableCouponsText: {
-    color: 'white',
-    fontSize: ms(12),
-    opacity: 0.9
-  },
   offerCard: {
     borderRadius: s(8),
-    padding: s(16),
-    marginBottom: vs(12),
+    padding: s(12),
+    marginBottom: vs(8),
     borderWidth: s(0.5),
   },
-  disabledCard: {
-    opacity: 0.7,
+  // Skeleton Styles
+  skeletonCard: {
+    borderRadius: s(8),
+    padding: s(12),
+    marginBottom: vs(8),
+    borderWidth: s(0.5),
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.5,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: vs(12),
+  },
+  skeletonCircle: {
+    width: s(20),
+    height: s(20),
+    borderRadius: s(10),
+  },
+  skeletonBadge: {
+    width: s(40),
+    height: vs(16),
+    borderRadius: s(4),
+  },
+  skeletonRow: {
+    marginBottom: vs(8),
+  },
+  skeletonTextLarge: {
+    height: vs(16),
+    borderRadius: s(4),
+    width: '60%',
+  },
+  skeletonTextMedium: {
+    height: vs(12),
+    borderRadius: s(4),
+    width: '90%',
+  },
+  skeletonTextSmall: {
+    height: vs(10),
+    borderRadius: s(4),
+    width: '70%',
+  },
+  skeletonTextXSmall: {
+    height: vs(8),
+    borderRadius: s(4),
+    width: '50%',
+  },
+  skeletonButton: {
+    width: s(60),
+    height: vs(24),
+    borderRadius: s(5),
   },
   couponHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: vs(8)
+    marginBottom: vs(6)
   },
   couponBadge: {
-    paddingHorizontal: s(8),
+    paddingHorizontal: s(6),
     paddingVertical: vs(2),
     borderRadius: s(4)
   },
@@ -486,14 +632,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: vs(8)
+    marginBottom: vs(6)
   },
   codeContainer: {
     flex: 1,
     marginRight: s(8)
   },
   offerCode: {
-    fontSize: ms(16),
+    fontSize: ms(14),
     fontWeight: 'bold',
     marginBottom: vs(2)
   },
@@ -504,45 +650,34 @@ const styles = StyleSheet.create({
     marginTop: vs(2)
   },
   applyButton: {
-    paddingHorizontal: s(16),
-    paddingVertical: vs(8),
+    paddingHorizontal: s(12),
+    paddingVertical: vs(6),
     borderRadius: s(5),
-    minWidth: s(70),
+    minWidth: s(60),
     alignItems: 'center'
   },
   applyButtonText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: ms(12)
+    fontSize: ms(11)
   },
   offerDescription: {
-    fontSize: ms(12),
-    marginBottom: vs(4),
-    lineHeight: vs(16)
+    fontSize: ms(11),
+    marginBottom: vs(3),
+    lineHeight: vs(14)
   },
   maxDiscountText: {
-    fontSize: ms(10),
-    marginBottom: vs(2)
+    fontSize: ms(9),
+    marginBottom: vs(1)
   },
   validityText: {
-    fontSize: ms(10),
-    marginBottom: vs(4),
+    fontSize: ms(9),
+    marginBottom: vs(2),
     fontStyle: 'italic'
   },
   offerNote: {
-    fontSize: ms(10),
+    fontSize: ms(9),
     fontStyle: 'italic'
-  },
-  requirementsContainer: {
-    marginTop: vs(8),
-    padding: s(8),
-    backgroundColor: '#FFF3E0',
-    borderRadius: s(4),
-  },
-  requirementsText: {
-    fontSize: ms(10),
-    color: '#E65100',
-    fontWeight: '500'
   },
   loadingContainer: {
     flex: 1,
@@ -572,7 +707,10 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: s(20),
     paddingVertical: vs(10),
-    borderRadius: s(5)
+    borderRadius: s(5),
+    minWidth: s(100),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   retryButtonText: {
     color: 'white',
@@ -597,7 +735,7 @@ const styles = StyleSheet.create({
     marginBottom: vs(16)
   },
   loadingIndicator: {
-    marginTop: vs(8)
+    marginTop: vs(4)
   },
   appliedCouponBanner: {
     padding: s(12),
@@ -622,14 +760,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: vs(16),
+    padding: vs(12),
     gap: s(8)
   },
   footerText: {
     fontSize: ms(12),
   },
   endOfList: {
-    padding: vs(16),
+    padding: vs(12),
     alignItems: 'center'
   },
   endOfListText: {

@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert, RefreshControl } from 'react-native'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert, RefreshControl, StatusBar } from 'react-native'
 import React, { useState, useCallback, useMemo, memo, useEffect } from 'react'
 import { s, vs, ms } from 'react-native-size-matters'
-import { BRAND, DARK } from '../../src/constant/colors'
+import colors, { BRAND, DARK } from '../../src/constant/colors'
 import { DeleteIcon, MinusIcon, PlusIcon } from '../../src/SVGicons/icon'
 import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -448,6 +448,7 @@ const MyOrder = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Color.bg }]}>
+      <StatusBar backgroundColor={colors.bg} barStyle={Theme ? 'light-content' : 'dark-content'} />
       <ScrollView
         style={styles.cartItems}
         showsVerticalScrollIndicator={false}
